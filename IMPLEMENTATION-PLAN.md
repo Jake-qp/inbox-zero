@@ -517,7 +517,7 @@ export default function BriefingSettings() {
 
 ## Phase 4: Polish
 
-### Task 4.1-4.2: States [ ]
+### Task 4.1-4.2: States [DONE]
 
 **Create:**
 - `app/(app)/briefing/loading.tsx` - Skeleton
@@ -526,6 +526,13 @@ export default function BriefingSettings() {
 **Reference:** Other loading/error files in app
 
 **Update plan:** Mark DONE
+
+**Notes for next task:**
+- File created: `apps/web/app/(app)/briefing/loading.tsx` - Skeleton loading state matching briefing page structure (header, urgent section, account sections with email cards)
+- File created: `apps/web/app/(app)/briefing/error.tsx` - Error boundary with retry button, uses `ErrorDisplay` component and Sentry error tracking
+- Loading skeleton uses `Skeleton` component from `@/components/ui/skeleton` with proper spacing and structure
+- Error component uses `reset()` function from Next.js error boundary props for retry functionality
+- Both components wrapped in `PageWrapper` for consistent layout
 
 ---
 
