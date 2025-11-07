@@ -123,6 +123,7 @@ function BriefingContent({
           badge={account.badge}
           hasError={account.hasError}
           errorType={account.errorType}
+          atLimit={account.atLimit}
         />
       ))}
 

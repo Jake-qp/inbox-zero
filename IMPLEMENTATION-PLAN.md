@@ -215,7 +215,7 @@
 - **Keep:** Prev/Next/Today button logic (only visible in History mode)
 - **Notes for next task:** BriefingHeader now accepts `mode` prop. Page.tsx updated to calculate mode: `!params.date ? 'inbox' : 'history'` (simplified from task spec). Tabs use `defaultValue={mode}` since Tabs component uses defaultValue prop. TabsTrigger onClick handlers use preventDefault + router.push for navigation. Date navigation buttons only render when `mode === 'history'`. Inbox mode shows "{totalShown} important emails in inbox", History mode shows formatted date.
 
-### 7.3 Update Main Page
+### 7.3 Update Main Page ✅ DONE
 - **File:** `apps/web/app/(app)/briefing/page.tsx`
 - **Modify BriefingContent (line 60):**
   * Add `mode` calculation: `const mode = currentDate === new Date().toISOString().split('T')[0] && !params.date ? 'inbox' : 'history'`
@@ -223,6 +223,7 @@
   * Pass `atLimit` to AccountSection: `<AccountSection atLimit={account.atLimit} .../>`
 - **Keep unchanged:** Error handling (FUTURE_DATE, OLD_DATE), urgent extraction, warning logic
 - **Note:** Inbox mode (no date param) skips date validation errors
+- **Notes for next task:** Mode calculation already existed (lines 74-77), verified it matches spec. Added `atLimit={account.atLimit}` prop to AccountSection call (line 126). Also added `atLimit?: boolean` prop signature to AccountSection component (needed for TypeScript compilation). AccountSection now accepts `atLimit` prop and is ready for task 7.4 to add the warning UI.
 
 ### 7.4 Add Inbox Limit Warning
 - **File:** `apps/web/components/briefing/AccountSection.tsx`

@@ -33,6 +33,7 @@ export function AccountSection({
   badge,
   hasError,
   errorType,
+  atLimit,
 }: {
   account: {
     id: string;
@@ -48,6 +49,7 @@ export function AccountSection({
   };
   hasError?: boolean;
   errorType?: "AUTH_REQUIRED" | "OTHER";
+  atLimit?: boolean;
 }) {
   const isMobile = useIsMobile();
   const [isCollapsed, setIsCollapsed] = useState(isMobile);
