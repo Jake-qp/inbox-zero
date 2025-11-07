@@ -41,7 +41,6 @@ import { markReadThreadAction } from "@/utils/actions/mail";
 import { toastSuccess, toastError } from "@/components/Toast";
 import { extractNameFromEmail } from "@/utils/email";
 import { formatShortDate } from "@/utils/date";
-import { decodeSnippet } from "@/utils/gmail/decode";
 import { getEmailUrlForMessage } from "@/utils/url";
 
 export function BriefingEmailModal({
@@ -188,7 +187,7 @@ export function BriefingEmailModal({
       } else {
         toastSuccess({ description: "Marked as unread" });
       }
-    } catch (error) {
+    } catch (_error) {
       toastError({ description: "Failed to mark as unread" });
     } finally {
       setIsMarkingUnread(false);
