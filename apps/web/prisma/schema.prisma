@@ -101,6 +101,25 @@ model User {
   // Referral relationships
   referralsMade    Referral[] @relation("ReferrerUser")
   referralReceived Referral?  @relation("ReferredUser")
+
+  // Daily Briefing - Custom addition
+  briefingSnapshots BriefingSnapshot[]
+}
+
+// Daily Briefing - Custom addition
+model BriefingSnapshot {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  date DateTime  // Start of day (YYYY-MM-DD 00:00:00)
+  data Json      // Cached BriefingResponse as JSON
+  
+  @@unique([userId, date])
+  @@index([userId, date])
 }
 
 // Migrating over to the new settings model. Currently most settings are in the User model, but will be moved to this model in the future.
@@ -123,6 +142,9 @@ model EmailAccount {
   behaviorProfile           Json?
   personaAnalysis           Json? // ai analysis of the user's persona
   role                      String? // the role confirmed by the user - previously `User.surveyRole`
+
+  // Daily Briefing - Custom addition
+  briefingGuidance String? @db.Text
 
   statsEmailFrequency       Frequency         @default(WEEKLY)
   summaryEmailFrequency     Frequency         @default(WEEKLY)

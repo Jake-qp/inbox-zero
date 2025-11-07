@@ -1,0 +1,5 @@
+# Allow access to env files for Cursor
+!.env.example
+!.env.local
+!.env
+
