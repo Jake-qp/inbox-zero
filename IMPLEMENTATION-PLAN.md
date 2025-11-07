@@ -338,7 +338,7 @@ export function useBriefing(date?: string) {
 
 ---
 
-### Task 2.3-2.6: Components [ ]
+### Task 2.3-2.6: Components [DONE]
 
 **Create 5 components in `apps/web/components/briefing/`:**
 
@@ -384,6 +384,16 @@ export function useBriefing(date?: string) {
 - If no accounts: "Connect an email account to get started"
 
 **Update plan:** Mark DONE after all 5 created
+
+**Notes for next task:**
+- All 5 components created and enhanced in `apps/web/components/briefing/`
+- BriefingHeader: Date navigation implemented with Previous/Next/Today buttons, Next disabled when viewing today
+- UrgentSection: Red card with urgent email count, maps emails to EmailCard components
+- AccountSection: Enhanced with provider icon (Mail icon for all providers), collapsible with useState, badge display, error handling with AlertError
+- EmailCard: Score badge colors (red 9-10, orange 7-8, yellow 6), archive action implemented using `archiveEmails` from `store/archive-queue`, Reply/View actions navigate correctly, time formatting uses `formatShortDate`
+- EmptyState: Icon, message, links to settings and connect account
+- Archive action uses `archiveEmails` pattern from `store/archive-queue` with toast notifications
+- Provider icons use Mail icon from lucide-react (can be enhanced with brand-specific icons later)
 
 ---
 

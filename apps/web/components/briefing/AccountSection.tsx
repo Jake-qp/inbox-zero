@@ -3,14 +3,25 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { AlertError } from "@/components/Alert";
 import type { ParsedMessage } from "@/utils/types";
 import { EmailCard } from "./EmailCard";
-function getProviderIcon(_provider: string) {
-  // This will be enhanced in later tasks - for now return null
-  return null;
+import {
+  isGoogleProvider,
+  isMicrosoftProvider,
+} from "@/utils/email/provider-types";
+
+function getProviderIcon(provider: string) {
+  // Simple icon display - can be enhanced with brand-specific icons later
+  if (isGoogleProvider(provider)) {
+    return <Mail className="h-4 w-4 text-muted-foreground" />;
+  }
+  if (isMicrosoftProvider(provider)) {
+    return <Mail className="h-4 w-4 text-muted-foreground" />;
+  }
+  return <Mail className="h-4 w-4 text-muted-foreground" />;
 }
 
 export function AccountSection({

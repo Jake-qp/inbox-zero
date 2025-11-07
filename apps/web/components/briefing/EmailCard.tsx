@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +9,8 @@ import { Reply, Archive, Eye } from "lucide-react";
 import { extractNameFromEmail } from "@/utils/email";
 import { formatShortDate } from "@/utils/date";
 import type { ParsedMessage } from "@/utils/types";
+import { archiveEmails } from "@/store/archive-queue";
+import { toastSuccess, toastError } from "@/components/Toast";
 
 export function EmailCard({
   email,
@@ -17,6 +20,7 @@ export function EmailCard({
   accountId: string;
 }) {
   const router = useRouter();
+  const [isArchiving, setIsArchiving] = useState(false);
   const fromName = extractNameFromEmail(email.headers.from);
   const emailDate = new Date(email.headers.date);
   const snippet = email.snippet || "";
@@ -39,9 +43,23 @@ export function EmailCard({
   };
 
   const handleArchive = async () => {
-    // TODO: Implement archive action - will be enhanced in later tasks
-    // For now, just navigate to view
-    handleView();
+    setIsArchiving(true);
+    try {
+      await archiveEmails({
+        threadIds: [email.threadId],
+        onSuccess: () => {
+          toastSuccess({ description: "Email archived" });
+        },
+        onError: () => {
+          toastError({ description: "Failed to archive email" });
+        },
+        emailAccountId: accountId,
+      });
+    } catch (error) {
+      toastError({ description: "Failed to archive email" });
+    } finally {
+      setIsArchiving(false);
+    }
   };
 
   return (
@@ -82,6 +100,7 @@ export function EmailCard({
             variant="ghost"
             size="sm"
             onClick={handleArchive}
+            disabled={isArchiving}
             aria-label="Archive"
           >
             <Archive className="h-4 w-4" />
