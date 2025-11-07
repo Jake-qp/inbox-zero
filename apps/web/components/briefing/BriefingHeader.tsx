@@ -13,13 +13,15 @@ export function BriefingHeader({
   mode,
   refresh,
   isRefreshing = false,
+  activeTab,
 }: {
   totalScanned?: number;
   totalShown?: number;
   currentDate: string;
-  mode: "inbox" | "history";
+  mode: "inbox" | "history" | "settings";
   refresh?: () => void;
   isRefreshing?: boolean;
+  activeTab?: "inbox" | "history" | "settings";
 }) {
   const router = useRouter();
   const today = new Date().toISOString().split("T")[0];
@@ -55,20 +57,8 @@ export function BriefingHeader({
     router.push("/briefing");
   };
 
-  // Tab navigation handlers
-  const handleInboxTab = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    router.push("/briefing");
-  };
-
-  const handleHistoryTab = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    router.push(`/briefing?date=${today}`);
-  };
-
-  const handleSettingsTab = () => {
-    router.push("/briefing/settings");
-  };
+  // Tab navigation handlers - Tabs component handles navigation via href automatically
+  // No need for onClick handlers since Tabs component manages navigation
 
   return (
     <div className="space-y-4 pb-6 border-b border-violet-100 dark:border-violet-900/30">
@@ -148,25 +138,26 @@ export function BriefingHeader({
         )}
       </div>
 
-      <Tabs defaultValue={mode} className="w-full">
+      <Tabs
+        defaultValue={activeTab || mode}
+        searchParam="tab"
+        className="w-full"
+      >
         <TabsList className="h-10 bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 p-1">
           <TabsTrigger
             value="inbox"
-            onClick={handleInboxTab}
             className="text-sm font-medium px-4 data-[state=active]:bg-white dark:data-[state=active]:bg-violet-900 data-[state=active]:text-violet-700 dark:data-[state=active]:text-violet-300 data-[state=active]:shadow-sm"
           >
             Inbox
           </TabsTrigger>
           <TabsTrigger
             value="history"
-            onClick={handleHistoryTab}
             className="text-sm font-medium px-4 data-[state=active]:bg-white dark:data-[state=active]:bg-violet-900 data-[state=active]:text-violet-700 dark:data-[state=active]:text-violet-300 data-[state=active]:shadow-sm"
           >
             History
           </TabsTrigger>
           <TabsTrigger
             value="settings"
-            onClick={handleSettingsTab}
             className="text-sm font-medium px-4 data-[state=active]:bg-white dark:data-[state=active]:bg-violet-900 data-[state=active]:text-violet-700 dark:data-[state=active]:text-violet-300 data-[state=active]:shadow-sm"
           >
             Settings

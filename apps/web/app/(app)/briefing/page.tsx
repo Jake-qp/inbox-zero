@@ -1,6 +1,7 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useBriefing } from "@/hooks/useBriefing";
 import { LoadingContent } from "@/components/LoadingContent";
 import { PageWrapper } from "@/components/PageWrapper";
@@ -13,9 +14,10 @@ import { AccountSection } from "@/components/briefing/AccountSection";
 import { EmptyState } from "@/components/briefing/EmptyState";
 import { BriefingLoading } from "@/components/briefing/BriefingLoading";
 import { BriefingEmailModal } from "@/components/briefing/BriefingEmailModal";
+import { BriefingSettings } from "@/components/briefing/BriefingSettings";
 
 export default function BriefingPage(props: {
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<{ date?: string; tab?: string }>;
 }) {
   const params = use(props.searchParams);
   const currentDate = params.date || new Date().toISOString().split("T")[0];
@@ -85,6 +87,8 @@ function BriefingContent({
   refresh: () => void;
   isRefreshing: boolean;
 }) {
+  const router = useRouter();
+
   // Track locally archived emails for optimistic UI updates
   const [archivedThreadIds, setArchivedThreadIds] = useState<Set<string>>(
     new Set(),
@@ -99,11 +103,42 @@ function BriefingContent({
     index: number;
   } | null>(null);
 
+  // Determine active tab from URL params
+  // Priority: tab param > date param > inbox
+  const activeTab: "inbox" | "history" | "settings" = (() => {
+    if (params.tab === "settings") {
+      return "settings";
+    }
+    const today = new Date().toISOString().split("T")[0];
+    if (params.date && currentDate !== today) {
+      return "history";
+    }
+    return "inbox";
+  })();
+
   // Calculate mode: inbox if no date param, history if date param exists
   const mode =
     currentDate === new Date().toISOString().split("T")[0] && !params.date
       ? "inbox"
       : "history";
+
+  // Handle tab changes
+  const handleTabChange = (tab: "inbox" | "history" | "settings") => {
+    if (tab === "inbox") {
+      // Navigate to inbox mode (remove all params)
+      router.push("/briefing");
+    } else if (tab === "history") {
+      // Navigate to history mode with today's date
+      const today = new Date().toISOString().split("T")[0];
+      router.push(`/briefing?date=${today}`);
+    } else if (tab === "settings") {
+      // Navigate to settings tab (preserve date if exists)
+      const url = params.date
+        ? `/briefing?date=${params.date}&tab=settings`
+        : "/briefing?tab=settings";
+      router.push(url);
+    }
+  };
 
   // Filter out archived emails from the data
   const filteredData = {
@@ -200,50 +235,57 @@ function BriefingContent({
         totalScanned={data.totalScanned}
         totalShown={data.totalShown}
         currentDate={currentDate}
-        mode={mode}
+        mode={activeTab === "settings" ? "settings" : mode}
         refresh={refresh}
         isRefreshing={isRefreshing}
+        activeTab={activeTab}
       />
 
-      {showUrgentWarning && (
-        <AlertError
-          title="High Priority Alert"
-          description={`You have ${urgentEmails.length} urgent emails requiring immediate attention.`}
-        />
-      )}
+      {activeTab === "settings" ? (
+        <BriefingSettings />
+      ) : (
+        <>
+          {showUrgentWarning && (
+            <AlertError
+              title="High Priority Alert"
+              description={`You have ${urgentEmails.length} urgent emails requiring immediate attention.`}
+            />
+          )}
 
-      {urgentEmails.length > 0 && (
-        <UrgentSection
-          emails={urgentEmails}
-          onViewEmail={handleViewEmail}
-          onArchive={(threadId) => {
-            // Optimistically add to archived list
-            setArchivedThreadIds((prev) => new Set([...prev, threadId]));
-          }}
-        />
-      )}
+          {urgentEmails.length > 0 && (
+            <UrgentSection
+              emails={urgentEmails}
+              onViewEmail={handleViewEmail}
+              onArchive={(threadId) => {
+                // Optimistically add to archived list
+                setArchivedThreadIds((prev) => new Set([...prev, threadId]));
+              }}
+            />
+          )}
 
-      <div className="space-y-3">
-        {filteredData.accounts.map((account) => (
-          <AccountSection
-            key={account.account.id}
-            account={account.account}
-            emails={account.emails}
-            badge={account.badge}
-            hasError={account.hasError}
-            errorType={account.errorType}
-            atLimit={account.atLimit}
-            onViewEmail={handleViewEmail}
-            onArchive={(threadId) => {
-              // Optimistically add to archived list
-              setArchivedThreadIds((prev) => new Set([...prev, threadId]));
-            }}
-          />
-        ))}
-      </div>
+          <div className="space-y-3">
+            {filteredData.accounts.map((account) => (
+              <AccountSection
+                key={account.account.id}
+                account={account.account}
+                emails={account.emails}
+                badge={account.badge}
+                hasError={account.hasError}
+                errorType={account.errorType}
+                atLimit={account.atLimit}
+                onViewEmail={handleViewEmail}
+                onArchive={(threadId) => {
+                  // Optimistically add to archived list
+                  setArchivedThreadIds((prev) => new Set([...prev, threadId]));
+                }}
+              />
+            ))}
+          </div>
 
-      {filteredData.accounts.every((a) => a.emails.length === 0) && (
-        <EmptyState message="All clear! No important emails today." />
+          {filteredData.accounts.every((a) => a.emails.length === 0) && (
+            <EmptyState message="All clear! No important emails today." />
+          )}
+        </>
       )}
 
       {/* Email Viewer Modal */}
