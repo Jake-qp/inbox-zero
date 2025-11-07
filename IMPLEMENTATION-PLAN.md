@@ -202,7 +202,7 @@
   * Return `atLimit` in account result object (add to line 101-115 return)
 - **Notes for next task:** `BriefingResponse` type now includes `atLimit?: boolean` in account objects. Mode detection works: no date param = inbox mode, date param = history mode. Inbox mode skips snapshot caching and date validation. Provider-specific queries implemented: Gmail uses `query: "in:inbox -in:trash -in:spam"`, Outlook defaults to inbox folder when no query provided. All error return cases include `atLimit: false`.
 
-### 7.2 Update BriefingHeader Component  
+### 7.2 Update BriefingHeader Component ✅ DONE
 - **File:** `apps/web/components/briefing/BriefingHeader.tsx`
 - **Add props:** `mode: 'inbox' | 'history'`
 - **Add imports:** `Tabs`, `TabsList`, `TabsTrigger` from `@/components/ui/tabs`, `useRouter`, `useSearchParams`
@@ -213,6 +213,7 @@
   * For Inbox mode: Show `{totalShown} important emails in inbox` (use existing totalShown prop)
   * Tab handlers: `router.push('/briefing')` for Inbox, `router.push('/briefing?date=${today}')` for History
 - **Keep:** Prev/Next/Today button logic (only visible in History mode)
+- **Notes for next task:** BriefingHeader now accepts `mode` prop. Page.tsx updated to calculate mode: `!params.date ? 'inbox' : 'history'` (simplified from task spec). Tabs use `defaultValue={mode}` since Tabs component uses defaultValue prop. TabsTrigger onClick handlers use preventDefault + router.push for navigation. Date navigation buttons only render when `mode === 'history'`. Inbox mode shows "{totalShown} important emails in inbox", History mode shows formatted date.
 
 ### 7.3 Update Main Page
 - **File:** `apps/web/app/(app)/briefing/page.tsx`

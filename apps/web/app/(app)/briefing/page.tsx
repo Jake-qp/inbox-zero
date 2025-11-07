@@ -48,7 +48,11 @@ export default function BriefingPage(props: {
     <PageWrapper>
       <LoadingContent loading={isLoading} error={error}>
         {data ? (
-          <BriefingContent data={data} currentDate={currentDate} />
+          <BriefingContent
+            data={data}
+            currentDate={currentDate}
+            params={params}
+          />
         ) : (
           <EmptyState message="No briefing data available." />
         )}
@@ -60,10 +64,18 @@ export default function BriefingPage(props: {
 function BriefingContent({
   data,
   currentDate,
+  params,
 }: {
   data: BriefingResponse;
   currentDate: string;
+  params: { date?: string };
 }) {
+  // Calculate mode: inbox if no date param, history if date param exists
+  const mode =
+    currentDate === new Date().toISOString().split("T")[0] && !params.date
+      ? "inbox"
+      : "history";
+
   // Extract urgent emails (score >= 9) from all accounts
   const urgentEmails = data.accounts.flatMap((account) =>
     account.emails
@@ -91,6 +103,7 @@ function BriefingContent({
         totalScanned={data.totalScanned}
         totalShown={data.totalShown}
         currentDate={currentDate}
+        mode={mode}
       />
 
       {showUrgentWarning && (
