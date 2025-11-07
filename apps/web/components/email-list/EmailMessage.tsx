@@ -12,10 +12,12 @@ import { ComposeEmailFormLazy } from "@/app/(app)/[emailAccountId]/compose/Compo
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import type { ParsedMessage } from "@/utils/types";
-import { forwardEmailHtml, forwardEmailSubject } from "@/utils/gmail/forward";
-import { extractEmailReply } from "@/utils/parse/extract-reply.client";
 import type { ReplyingToEmail } from "@/app/(app)/[emailAccountId]/compose/ComposeEmailForm";
-import { createReplyContent } from "@/utils/gmail/reply";
+import {
+  prepareReplyingToEmail,
+  prepareForwardingEmail,
+  prepareDraftReplyEmail,
+} from "@/utils/email/reply-helpers";
 import { cn } from "@/utils";
 import { generateNudgeReplyAction } from "@/utils/actions/generate-reply";
 import type { ThreadMessage } from "@/components/email-list/types";
@@ -312,58 +314,4 @@ function ReplyPanel({
       </div>
     </>
   );
-}
-
-const prepareReplyingToEmail = (
-  message: ParsedMessage,
-  content = "",
-): ReplyingToEmail => {
-  const sentFromUser = message.labelIds?.includes("SENT");
-
-  const { html } = createReplyContent({ message });
-
-  return {
-    // If following an email from yourself, use original recipients, otherwise reply to sender
-    to: sentFromUser ? message.headers.to : message.headers.from,
-    // If following an email from yourself, don't add "Re:" prefix
-    subject: sentFromUser
-      ? message.headers.subject
-      : `Re: ${message.headers.subject}`,
-    headerMessageId: message.headers["message-id"]!,
-    threadId: message.threadId!,
-    // Keep original CC
-    cc: message.headers.cc,
-    // Keep original BCC if available
-    bcc: sentFromUser ? message.headers.bcc : "",
-    references: message.headers.references,
-    draftHtml: content || "",
-    quotedContentHtml: html,
-  };
-};
-
-const prepareForwardingEmail = (message: ParsedMessage): ReplyingToEmail => ({
-  to: "",
-  subject: forwardEmailSubject(message.headers.subject),
-  headerMessageId: "",
-  threadId: message.threadId!,
-  cc: "",
-  references: "",
-  draftHtml: forwardEmailHtml({ content: "", message }),
-  quotedContentHtml: "",
-});
-
-function prepareDraftReplyEmail(draft: ParsedMessage): ReplyingToEmail {
-  const splitHtml = extractEmailReply(draft.textHtml || "");
-
-  return {
-    to: draft.headers.to,
-    subject: draft.headers.subject,
-    headerMessageId: draft.headers["message-id"]!,
-    threadId: draft.threadId!,
-    cc: draft.headers.cc,
-    bcc: draft.headers.bcc,
-    references: draft.headers.references,
-    draftHtml: splitHtml.draftHtml,
-    quotedContentHtml: splitHtml.originalHtml,
-  };
 }

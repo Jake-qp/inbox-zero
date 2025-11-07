@@ -24,11 +24,13 @@ export function EmailCard({
   accountId,
   accountEmail,
   accountProvider,
+  onView,
 }: {
   email: ParsedMessage & { score: number };
   accountId: string;
   accountEmail: string;
   accountProvider: string;
+  onView?: (email: ParsedMessage & { score: number }) => void;
 }) {
   const [isArchiving, setIsArchiving] = useState(false);
   const fromName = extractNameFromEmail(email.headers.from);
@@ -64,13 +66,9 @@ export function EmailCard({
   };
 
   const handleView = () => {
-    const url = getEmailUrlForMessage(
-      email.id,
-      email.threadId,
-      accountEmail,
-      accountProvider,
-    );
-    window.open(url, "_blank", "noopener,noreferrer");
+    if (onView) {
+      onView(email);
+    }
   };
 
   const handleArchive = async () => {
@@ -80,16 +78,17 @@ export function EmailCard({
         threadIds: [email.threadId],
         onSuccess: () => {
           toastSuccess({ description: "Email archived" });
+          // Refresh briefing data to remove archived email from list
           mutate("/api/ai/briefing");
         },
         onError: () => {
           toastError({ description: "Failed to archive email" });
+          setIsArchiving(false);
         },
         emailAccountId: accountId,
       });
     } catch (error) {
       toastError({ description: "Failed to archive email" });
-    } finally {
       setIsArchiving(false);
     }
   };

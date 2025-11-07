@@ -97,11 +97,11 @@ User → /briefing?date=YYYY-MM-DD
 │                                                              │
 │   🚨 Server outage - Score 10                               │
 │   work@company.com • 30 mins ago                            │
-│   [Reply] [Archive] [View Thread]                           │
+│   [Archive] [View]                                          │
 │                                                              │
 │   🚨 Contract revision - Score 9                            │
 │   client@outlook.com • 1 hour ago                           │
-│   [Reply] [Archive] [View Thread]                           │
+│   [Archive] [View]                                          │
 │                                                              │
 │ ──────────────────────────────────────────────────────────  │
 │                                                              │
@@ -110,12 +110,12 @@ User → /briefing?date=YYYY-MM-DD
 │   📧 Meeting request                            Score: 8    │
 │   From: Sarah Chen • 2 hours ago                            │
 │   Can we sync on Q4 strategy tomorrow at 2pm?               │
-│   [Reply] [Archive] [View Thread]                           │
+│   [Archive] [View]                                          │
 │                                                              │
 │   📧 Q4 Report                                  Score: 7    │
 │   From: Finance Team • 5 hours ago                          │
 │   Attached: Q4_Summary.pdf - Please review...               │
-│   [Reply] [Archive] [View Thread]                           │
+│   [Archive] [View]                                          │
 │                                                              │
 │ ──────────────────────────────────────────────────────────  │
 │                                                              │
@@ -124,19 +124,20 @@ User → /briefing?date=YYYY-MM-DD
 │   📧 Bank statement                             Score: 7    │
 │   From: Chase Bank • 1 hour ago                             │
 │   Your November statement is ready                          │
-│   [Reply] [Archive] [View Thread]                           │
+│   [Archive] [View]                                          │
 │                                                              │
 │ ──────────────────────────────────────────────────────────  │
 │                                                              │
 │ ℹ️ Shows: All important inbox emails                        │
-│   Updates: Archive/reply removes items                      │
+│   Updates: Archive removes items, View to read/reply        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 **Key Features:**
 - Clean, distraction-free list of important emails
-- Quick action buttons on each email card
-- Archive/reply actions remove from view immediately
+- Quick action buttons on each email card: [Archive] [View]
+- Archive removes from view immediately
+- View opens full email modal with all context and actions
 - Live updates as you work through emails
 - Footer explains inbox behavior
 
@@ -193,28 +194,81 @@ Each email card displays:
 - **From** - Sender name
 - **Time ago** - Relative time (e.g., "2 hours ago")
 - **Snippet** - First ~100 characters of email body (2 lines max)
-- **Action buttons** - Three quick actions (see below)
+- **Action buttons** - Two quick actions: [Archive] [View]
 
 ### Quick Action Buttons
-Each email card has three action buttons:
+Each email card has two action buttons:
 
-1. **[Reply]**
-   - Opens compose window for that email/thread
-   - Pre-populates recipient and subject with "Re:"
-   - Navigates to: `/[emailAccountId]/mail?threadId=[threadId]&reply=true`
-   - **Result:** Email is removed from Inbox briefing after reply is sent (when user returns to briefing)
-
-2. **[Archive]**
+1. **[Archive]**
    - Archives the email/thread in Gmail/Outlook
    - Immediate action (no confirmation needed)
    - **Result:** Email disappears from Inbox briefing immediately (live update)
    - Uses existing `store/archive-queue` pattern
+   - Keyboard shortcut: **E**
 
-3. **[View Thread]**
-   - Opens full thread view in main email interface
-   - Navigates to: `/[emailAccountId]/mail?threadId=[threadId]`
+2. **[View]**
+   - Opens email viewer modal (see Email Viewer Modal section below)
+   - Shows full email content with all context
+   - Provides actions: Reply, Reply All, Archive, Mark as unread, Delete
    - **Result:** Email stays in Inbox briefing (viewing doesn't remove it)
-   - Useful for reading full context before deciding to archive/reply
+   - Keyboard navigation: **J** (next), **K** (previous)
+
+### Email Viewer Modal
+When user clicks **[View]** on an email card, opens a full-screen modal with:
+
+**Layout:**
+- **Fixed Header** (top):
+  - Account email badge
+  - Priority score badge (color-coded)
+  - Email subject line
+  - Sender information with expandable recipients
+  - Timestamp
+  - Expandable To/CC/BCC details (Gmail-style)
+    - Collapsed: Shows first recipient + count (e.g., "to John Doe +3 more")
+    - Expanded: Full list of all To/CC/BCC recipients with email addresses
+    - Click chevron or "+X more" to expand/collapse
+
+- **Scrollable Content Area** (middle):
+  - Full email body (HTML or plain text)
+  - External image blocking (Gmail-style security):
+    - Images blocked by default (prevents tracking pixels)
+    - Shows warning banner: "Images are not displayed" with "Display images" button
+    - User clicks to load images for that specific email
+    - Data URI images (embedded) always display safely
+  - Attachments list (if any)
+  - Reply compose area (when replying)
+
+- **Sticky Footer** (bottom):
+  - Primary actions (left):
+    - **Archive** (E) - Archives and closes modal
+    - **Reply** (R) - Opens inline reply composer with dropdown for Reply/Reply All
+    - **Mark as unread** (U) - Marks unread and closes modal
+  - Secondary actions (right):
+    - **Delete** - Moves to trash
+    - **Open in Gmail/Outlook** - Opens in email provider
+    - **Previous** (K) / **Next** (J) - Navigate between emails
+
+**Keyboard Shortcuts:**
+- **E** - Archive and close
+- **R** - Open reply composer
+- **U** - Mark as unread and close
+- **J** - Next email
+- **K** - Previous email
+- **Escape** - Close modal (or cancel reply if composing)
+
+**Image Security:**
+- External images (http/https) blocked by default
+- CSP policy: Only `data:` URIs allowed initially
+- "Display images" button expands CSP to allow `http:` and `https:`
+- Prevents email tracking pixels and malicious content
+- User has full control per email
+
+**Reply Functionality:**
+- Reply button opens dropdown: Reply / Reply All
+- Inline compose area appears in modal (no navigation)
+- Pre-populated with recipients and subject
+- Send button dispatches reply and closes modal
+- **Result:** Email removed from Inbox briefing after sending (when modal closes)
 
 ### Urgent Section Behavior
 - Shows emails with score ≥9 from all accounts
@@ -357,6 +411,7 @@ apps/web/
 │   ├── UrgentSection.tsx
 │   ├── AccountSection.tsx
 │   ├── EmailCard.tsx
+│   ├── BriefingEmailModal.tsx  # Full email viewer with actions
 │   └── EmptyState.tsx
 │
 ├── hooks/
@@ -364,6 +419,9 @@ apps/web/
 │
 ├── utils/ai/briefing/
 │   └── score-importance.ts   # AI scoring
+│
+├── utils/email/
+│   └── reply-helpers.ts      # prepareReplyingToEmail
 │
 └── utils/actions/
     ├── email-account.ts      # updateBriefingGuidanceAction
@@ -390,8 +448,15 @@ apps/web/
 - Add footer explanatory text
 - Show warning banner when account has 100+ emails:
   "This account has 100+ inbox emails. Archive emails to see all important items."
-- Update email cards to show action buttons: [Reply] [Archive] [View Thread]
-- Wire up action buttons to navigate/archive correctly
+- Update email cards to show action buttons: [Archive] [View]
+- Build email viewer modal (BriefingEmailModal.tsx):
+  - Fixed header with expandable To/CC/BCC recipients
+  - Scrollable content area
+  - Sticky footer with action buttons
+  - Gmail-style image blocking with "Display images" banner
+  - Keyboard shortcuts (E, R, U, J, K, Escape)
+  - Inline reply compose with Reply/Reply All dropdown
+- Wire up action buttons to modal/archive correctly
 - Add SWR revalidation after archive action (mutate call)
 - Keep existing account sections structure
 
@@ -415,9 +480,14 @@ apps/web/
 3. Scan urgent section (emails with score ≥9)
 4. Review account sections for all inbox emails
 5. For each email, choose action:
-   - **[Reply]** → Opens compose, sends reply, email disappears from briefing
    - **[Archive]** → Archives email, disappears immediately
-   - **[View Thread]** → Opens full thread to read context (stays in briefing)
+   - **[View]** → Opens modal with full email content
+     - Read full email with expandable To/CC/BCC details
+     - See "Display images" banner if external images present
+     - Reply inline (dropdown: Reply / Reply All)
+     - Archive (E), Mark unread (U), or Delete
+     - Navigate with J/K to next/previous email
+     - Send reply → Email disappears from briefing
 6. Done in 2-5 minutes
 7. Come back later → See only remaining important emails (archived ones are gone)
 
@@ -510,8 +580,11 @@ apps/web/
 - `utils/email/provider.ts` - EmailProvider, createEmailProvider
 - `utils/ai/` - getModel, generateText, createScopedLogger
 - `utils/middleware.ts` - withAuth
-- `components/ui/` - Card, Button, Badge, Skeleton, Textarea
-- `utils/actions/` - actionClient pattern
+- `components/ui/` - Card, Button, Badge, Skeleton, Textarea, Dialog
+- `components/email-list/EmailContents.tsx` - HtmlEmail with image blocking
+- `utils/actions/` - actionClient pattern, markReadThreadAction
+- `utils/email/reply-helpers.ts` - prepareReplyingToEmail
+- `store/archive-queue.ts` - archiveEmails, deleteEmails
 - SWR patterns from existing hooks
 
 **Reference Implementations:**
@@ -527,7 +600,10 @@ apps/web/
 **MVP Launch:**
 ✅ Inbox mode shows all accounts in unified inbox view (all important emails)  
 ✅ AI scoring 80%+ accurate  
+✅ Email viewer modal with full context (To/CC/BCC, images, replies)  
 ✅ Archive/reply actions work (live updates)  
+✅ Gmail-style image blocking for security  
+✅ Keyboard shortcuts (E, R, U, J, K) work  
 ✅ <3s Inbox load, <1s History load  
 ✅ Both Gmail and Outlook accounts work  
 ✅ Zero critical bugs  

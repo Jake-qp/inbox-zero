@@ -1,16 +1,18 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import { useBriefing } from "@/hooks/useBriefing";
 import { LoadingContent } from "@/components/LoadingContent";
 import { PageWrapper } from "@/components/PageWrapper";
 import { AlertError } from "@/components/Alert";
 import type { BriefingResponse } from "@/app/api/ai/briefing/route";
+import type { ParsedMessage } from "@/utils/types";
 import { BriefingHeader } from "@/components/briefing/BriefingHeader";
 import { UrgentSection } from "@/components/briefing/UrgentSection";
 import { AccountSection } from "@/components/briefing/AccountSection";
 import { EmptyState } from "@/components/briefing/EmptyState";
 import { BriefingLoading } from "@/components/briefing/BriefingLoading";
+import { BriefingEmailModal } from "@/components/briefing/BriefingEmailModal";
 
 export default function BriefingPage(props: {
   searchParams: Promise<{ date?: string }>;
@@ -81,6 +83,15 @@ function BriefingContent({
   refresh: () => void;
   isRefreshing: boolean;
 }) {
+  // Modal state
+  const [selectedEmail, setSelectedEmail] = useState<{
+    email: ParsedMessage & { score: number };
+    accountId: string;
+    accountEmail: string;
+    accountProvider: string;
+    index: number;
+  } | null>(null);
+
   // Calculate mode: inbox if no date param, history if date param exists
   const mode =
     currentDate === new Date().toISOString().split("T")[0] && !params.date
@@ -98,6 +109,56 @@ function BriefingContent({
         accountProvider: account.account.provider,
       })),
   );
+
+  // Flatten all emails for navigation
+  const allEmails = data.accounts.flatMap((account) =>
+    account.emails.map((email) => ({
+      email,
+      accountId: account.account.id,
+      accountEmail: account.account.email,
+      accountProvider: account.account.provider,
+    })),
+  );
+
+  const handleViewEmail = (
+    email: ParsedMessage & { score: number },
+    accountId: string,
+    accountEmail: string,
+    accountProvider: string,
+  ) => {
+    const index = allEmails.findIndex((e) => e.email.id === email.id);
+    setSelectedEmail({
+      email,
+      accountId,
+      accountEmail,
+      accountProvider,
+      index,
+    });
+  };
+
+  const handleNext = () => {
+    if (!selectedEmail || selectedEmail.index >= allEmails.length - 1) return;
+    const nextEmail = allEmails[selectedEmail.index + 1];
+    setSelectedEmail({
+      email: nextEmail.email,
+      accountId: nextEmail.accountId,
+      accountEmail: nextEmail.accountEmail,
+      accountProvider: nextEmail.accountProvider,
+      index: selectedEmail.index + 1,
+    });
+  };
+
+  const handlePrevious = () => {
+    if (!selectedEmail || selectedEmail.index <= 0) return;
+    const prevEmail = allEmails[selectedEmail.index - 1];
+    setSelectedEmail({
+      email: prevEmail.email,
+      accountId: prevEmail.accountId,
+      accountEmail: prevEmail.accountEmail,
+      accountProvider: prevEmail.accountProvider,
+      index: selectedEmail.index - 1,
+    });
+  };
 
   // Show warning if urgent >= 20
   const showUrgentWarning = urgentEmails.length >= 20;
@@ -127,7 +188,9 @@ function BriefingContent({
         />
       )}
 
-      {urgentEmails.length > 0 && <UrgentSection emails={urgentEmails} />}
+      {urgentEmails.length > 0 && (
+        <UrgentSection emails={urgentEmails} onViewEmail={handleViewEmail} />
+      )}
 
       <div className="space-y-3">
         {data.accounts.map((account) => (
@@ -139,6 +202,7 @@ function BriefingContent({
             hasError={account.hasError}
             errorType={account.errorType}
             atLimit={account.atLimit}
+            onViewEmail={handleViewEmail}
           />
         ))}
       </div>
@@ -146,6 +210,21 @@ function BriefingContent({
       {data.totalShown === 0 && (
         <EmptyState message="All clear! No important emails today." />
       )}
+
+      {/* Email Viewer Modal */}
+      <BriefingEmailModal
+        email={selectedEmail?.email || null}
+        accountId={selectedEmail?.accountId || ""}
+        accountEmail={selectedEmail?.accountEmail || ""}
+        accountProvider={selectedEmail?.accountProvider || ""}
+        onClose={() => setSelectedEmail(null)}
+        onNext={handleNext}
+        onPrevious={handlePrevious}
+        hasNext={
+          selectedEmail ? selectedEmail.index < allEmails.length - 1 : false
+        }
+        hasPrevious={selectedEmail ? selectedEmail.index > 0 : false}
+      />
     </div>
   );
 }

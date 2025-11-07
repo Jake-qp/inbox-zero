@@ -4,6 +4,7 @@ import DOMPurify from "dompurify";
 
 export function HtmlEmail({ html }: { html: string }) {
   const [showReplies, setShowReplies] = useState(false);
+  const [showImages, setShowImages] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { theme } = useTheme();
   const isDarkMode = theme === "dark";
@@ -14,23 +15,81 @@ export function HtmlEmail({ html }: { html: string }) {
     [sanitizedHtml],
   );
 
+  const hasExternalImages = useMemo(() => {
+    // Check for images with http/https URLs (not data URIs)
+    const imgTagRegex = /<img[^>]*src=["']([^"']+)["'][^>]*>/gi;
+    const matches = html.matchAll(imgTagRegex);
+
+    for (const match of matches) {
+      const src = match[1];
+      // Check if it's an external URL (not data URI)
+      if (
+        src &&
+        (src.startsWith("http://") ||
+          src.startsWith("https://") ||
+          src.startsWith("//"))
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  }, [html]);
+
   const srcDoc = useMemo(
-    () => getIframeHtml(showReplies ? sanitizedHtml : mainContent, isDarkMode),
-    [sanitizedHtml, mainContent, showReplies, isDarkMode],
+    () =>
+      getIframeHtml(
+        showReplies ? sanitizedHtml : mainContent,
+        isDarkMode,
+        showImages,
+      ),
+    [sanitizedHtml, mainContent, showReplies, isDarkMode, showImages],
   );
 
   const iframeHeight = useIframeHeight(iframeRef);
 
   return (
     <div className="relative">
+      {hasExternalImages && !showImages && (
+        <div className="mb-3 flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm dark:border-amber-900/50 dark:bg-amber-950/20">
+          <div className="flex items-center gap-2">
+            <svg
+              className="h-4 w-4 text-amber-600 dark:text-amber-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <span className="text-amber-900 dark:text-amber-200">
+              Images are not displayed
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowImages(true)}
+            className="rounded bg-amber-600 px-3 py-1 text-xs font-medium text-white hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-700"
+          >
+            Display images
+          </button>
+        </div>
+      )}
       <iframe
+        key={showImages ? "with-images" : "no-images"}
         ref={iframeRef}
         srcDoc={srcDoc}
         className="min-h-0 w-full"
         style={{ height: `${iframeHeight + 3}px` }}
         title="Email content preview"
         sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-        referrerPolicy="no-referrer"
+        referrerPolicy={
+          showImages ? "strict-origin-when-cross-origin" : "no-referrer"
+        }
       />
       {hasReplies && (
         <button
@@ -68,7 +127,7 @@ function getEmailContent(html: string) {
   };
 }
 
-function getIframeHtml(html: string, isDarkMode: boolean) {
+function getIframeHtml(html: string, isDarkMode: boolean, showImages = false) {
   // Count style attributes safely
   const styleAttributeCount = (html.match(/style=/g) || []).length;
 
@@ -162,8 +221,8 @@ function getIframeHtml(html: string, isDarkMode: boolean) {
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'none';
       style-src 'unsafe-inline';
-      img-src data: https:;
-      font-src 'none';
+      img-src ${showImages ? "data: http: https:" : "data:"};
+      font-src ${showImages ? "data: http: https:" : "none"};
       script-src 'none';
       frame-src 'none';
       object-src 'none';
@@ -244,6 +303,7 @@ function useIframeHeight(iframeRef: React.RefObject<HTMLIFrameElement | null>) {
     let attempts = 0;
     const maxAttempts = 5;
     const initialDelay = 100;
+    const timeoutIds: NodeJS.Timeout[] = [];
 
     const updateHeight = () => {
       try {
@@ -268,12 +328,37 @@ function useIframeHeight(iframeRef: React.RefObject<HTMLIFrameElement | null>) {
       const success = updateHeight();
       if (!success) {
         attempts++;
-        setTimeout(attemptUpdate, initialDelay * 2 ** attempts);
+        const timeoutId = setTimeout(
+          attemptUpdate,
+          initialDelay * 2 ** attempts,
+        );
+        timeoutIds.push(timeoutId);
       }
     };
 
+    // Initial height calculation
     const initialTimeoutId = setTimeout(attemptUpdate, initialDelay);
-    return () => clearTimeout(initialTimeoutId);
+    timeoutIds.push(initialTimeoutId);
+
+    // Listen for load events in iframe to recalculate height when images load
+    const iframe = iframeRef.current;
+    if (iframe?.contentWindow) {
+      const handleLoad = () => {
+        setTimeout(updateHeight, 100);
+        setTimeout(updateHeight, 500); // Extra attempt after images might load
+      };
+
+      iframe.addEventListener("load", handleLoad);
+
+      return () => {
+        iframe.removeEventListener("load", handleLoad);
+        timeoutIds.forEach((id) => clearTimeout(id));
+      };
+    }
+
+    return () => {
+      timeoutIds.forEach((id) => clearTimeout(id));
+    };
   }, [iframeRef?.current?.contentWindow]);
 
   return height;

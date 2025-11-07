@@ -9,6 +9,7 @@ import { EmailCard } from "./EmailCard";
 
 export function UrgentSection({
   emails,
+  onViewEmail,
 }: {
   emails: Array<
     ParsedMessage & {
@@ -18,6 +19,12 @@ export function UrgentSection({
       accountProvider: string;
     }
   >;
+  onViewEmail?: (
+    email: ParsedMessage & { score: number },
+    accountId: string,
+    accountEmail: string,
+    accountProvider: string,
+  ) => void;
 }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -84,6 +91,14 @@ export function UrgentSection({
               accountId={email.accountId}
               accountEmail={email.accountEmail}
               accountProvider={email.accountProvider}
+              onView={(e) =>
+                onViewEmail?.(
+                  e,
+                  email.accountId,
+                  email.accountEmail,
+                  email.accountProvider,
+                )
+              }
             />
           ))}
         </CardContent>

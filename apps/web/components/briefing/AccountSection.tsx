@@ -46,6 +46,7 @@ export function AccountSection({
   hasError,
   errorType,
   atLimit,
+  onViewEmail,
 }: {
   account: {
     id: string;
@@ -62,6 +63,12 @@ export function AccountSection({
   hasError?: boolean;
   errorType?: "AUTH_REQUIRED" | "OTHER";
   atLimit?: boolean;
+  onViewEmail?: (
+    email: ParsedMessage & { score: number },
+    accountId: string,
+    accountEmail: string,
+    accountProvider: string,
+  ) => void;
 }) {
   const isMobile = useIsMobile();
   const [isCollapsed, setIsCollapsed] = useState(isMobile);
@@ -187,6 +194,14 @@ export function AccountSection({
                   accountId={account.id}
                   accountEmail={account.email}
                   accountProvider={account.provider}
+                  onView={(e) =>
+                    onViewEmail?.(
+                      e,
+                      account.id,
+                      account.email,
+                      account.provider,
+                    )
+                  }
                 />
               ))
             : !hasError && (
