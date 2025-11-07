@@ -7,6 +7,7 @@ import { withError } from "@/utils/middleware";
 import { SafeError } from "@/utils/error";
 import { transferPremiumDuringMerge } from "@/utils/user/merge-premium";
 import { parseOAuthState } from "@/utils/oauth/state";
+import { saveTokens } from "@/utils/auth";
 
 const logger = createScopedLogger("outlook/linking/callback");
 
@@ -223,6 +224,30 @@ export const GET = withError(async (request) => {
     await transferPremiumDuringMerge({
       sourceUserId: existingAccount.userId,
       targetUserId,
+    });
+
+    // Save fresh OAuth tokens before updating relationships
+    // Calculate expires_at in seconds (unix timestamp)
+    let expiresAtSeconds: number | undefined;
+    if (tokens.expires_at) {
+      expiresAtSeconds = tokens.expires_at;
+    } else if (tokens.expires_in) {
+      const expiresInSeconds =
+        typeof tokens.expires_in === "string"
+          ? Number.parseInt(tokens.expires_in, 10)
+          : tokens.expires_in;
+      expiresAtSeconds = Math.floor(Date.now() / 1000 + expiresInSeconds);
+    }
+
+    await saveTokens({
+      tokens: {
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        expires_at: expiresAtSeconds,
+      },
+      accountRefreshToken: tokens.refresh_token || null,
+      providerAccountId: providerEmail, // Microsoft uses email as providerAccountId
+      provider: "microsoft",
     });
 
     await prisma.$transaction([

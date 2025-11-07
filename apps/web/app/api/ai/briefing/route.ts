@@ -6,6 +6,7 @@ import { scoreEmailsBatch } from "@/utils/ai/briefing/score-importance";
 import { createScopedLogger } from "@/utils/logger";
 import { z } from "zod";
 import type { ParsedMessage } from "@/utils/types";
+import { cleanupInvalidTokens } from "@/utils/auth/cleanup-invalid-tokens";
 
 const logger = createScopedLogger("briefing-api");
 
@@ -24,6 +25,7 @@ export type BriefingResponse = {
       hasUrgent: boolean;
     };
     hasError?: boolean;
+    errorType?: "AUTH_REQUIRED" | "OTHER";
   }>;
   totalScanned: number;
   totalShown: number;
@@ -112,6 +114,46 @@ async function generateBriefing(
           hasError: false,
         };
       } catch (error) {
+        // Detect token-related errors
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        const isTokenError =
+          errorMessage.includes("No refresh token") ||
+          errorMessage.includes("invalid_grant") ||
+          errorMessage.includes("Decryption failed");
+
+        if (isTokenError) {
+          logger.warn("Token error detected, cleaning up", {
+            emailAccountId: emailAccount.id,
+            error: errorMessage,
+          });
+
+          // Use existing utility to clear invalid tokens
+          await cleanupInvalidTokens({
+            emailAccountId: emailAccount.id,
+            reason: "invalid_grant",
+            logger,
+          });
+
+          return {
+            account: {
+              id: emailAccount.id,
+              email: emailAccount.email,
+              provider: emailAccount.account.provider,
+              name: emailAccount.name,
+              image: emailAccount.image,
+            },
+            emails: [],
+            badge: {
+              count: 0,
+              hasUrgent: false,
+            },
+            hasError: true,
+            errorType: "AUTH_REQUIRED" as const,
+          };
+        }
+
+        // Non-token errors (existing error handling)
         logger.error("Failed to process account", {
           emailAccountId: emailAccount.id,
           error,
@@ -130,6 +172,7 @@ async function generateBriefing(
             hasUrgent: false,
           },
           hasError: true,
+          errorType: "OTHER" as const,
         };
       }
     }),

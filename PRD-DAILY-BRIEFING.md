@@ -267,7 +267,9 @@ apps/web/
 **0 accounts:** Onboarding message  
 **New user:** Use default guidance, show customization tip  
 **Future date:** Disable navigation beyond today  
-**Very old date (>90 days):** Show "Snapshot not available" or generate on-demand
+**Very old date (>90 days):** Show "Snapshot not available" or generate on-demand  
+**Invalid/expired tokens:** Auto-detect, clear tokens, show "Reconnect" button (preserves all user data)  
+**Token decryption fails:** Same as expired tokens - graceful reconnect flow
 
 ## 10. Performance & Technical Constraints
 
@@ -283,6 +285,7 @@ apps/web/
 - AI scoring fails → Default score=5
 - UI errors → Error boundaries per section
 - All errors logged with `createScopedLogger`
+- Token errors → Auto-cleanup + show reconnect UI (using existing `cleanupInvalidTokens()` utility)
 
 **Security:**
 - Use existing `withAuth` middleware
@@ -324,6 +327,56 @@ apps/web/
 - <5% missed important emails
 - <3 min avg triage time
 - 60% customize guidance
+
+---
+
+---
+
+## 13. Token Management & Reconnect Flow
+
+### Problem
+Existing users may have corrupted/expired OAuth tokens from:
+- Old merge flow bug (fixed in account linking callbacks)
+- Token encryption key mismatches
+- Normal OAuth token expiration
+
+### Solution: Auto-Heal Without Data Loss
+
+**Phase 1: One-Time Migration (Pre-Launch)**
+- Script: `apps/web/scripts/fix-broken-briefing-tokens.ts`
+- Scans all accounts, detects decryption failures
+- Clears broken tokens (sets access_token, refresh_token, expires_at to NULL)
+- Run once: `pnpm tsx apps/web/scripts/fix-broken-briefing-tokens.ts`
+
+**Phase 2: Smart Detection (Briefing API)**
+- Detect token errors: "No refresh token", "invalid_grant", decryption failures
+- Use existing `cleanupInvalidTokens()` utility from `utils/auth/cleanup-invalid-tokens.ts`
+- Return `errorType: 'AUTH_REQUIRED'` in response
+- Preserves account data, only clears tokens
+
+**Phase 3: Reconnect UI (User-Friendly)**
+- AccountSection shows: "Authentication expired → [Reconnect] button"
+- One-click OAuth flow (Google: `signIn.social()`, Microsoft: `signIn.social()`)
+- After reconnect: Fresh tokens saved, cache auto-invalidated, briefing regenerates
+- Zero data loss: All rules, labels, settings preserved
+- Auto-cache invalidation: `handleLinkAccount()` clears today's snapshot after OAuth success
+
+### Files Modified
+- `apps/web/app/api/google/linking/callback/route.ts` - Fixed merge flow to save tokens
+- `apps/web/app/api/outlook/linking/callback/route.ts` - Fixed merge flow to save tokens  
+- `apps/web/app/api/ai/briefing/route.ts` - Detect token errors, call `cleanupInvalidTokens()`
+- `apps/web/components/briefing/AccountSection.tsx` - Show reconnect button for AUTH_REQUIRED
+- `apps/web/app/(app)/briefing/page.tsx` - Pass errorType to AccountSection
+- `apps/web/utils/auth.ts` - Auto-invalidate briefing cache after OAuth in `handleLinkAccount()`
+- `apps/web/scripts/fix-broken-briefing-tokens.ts` - One-time cleanup script
+
+### Success Criteria
+✅ Existing users with 3-4 accounts don't need to delete/re-add  
+✅ Clear "Reconnect" button when tokens invalid  
+✅ One click per account to fix  
+✅ All setup (rules, labels, settings) preserved  
+✅ Works for future token expirations too  
+✅ Auto-cache invalidation after reconnect (no manual refresh needed)  
 
 ---
 

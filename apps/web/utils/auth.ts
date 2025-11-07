@@ -408,6 +408,22 @@ async function handleLinkAccount(account: Account) {
       userId: account.userId,
       accountId: account.id,
     });
+
+    // Invalidate today's briefing cache to show fresh data after reconnect
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    await prisma.briefingSnapshot
+      .delete({
+        where: {
+          userId_date: {
+            userId: account.userId,
+            date: today,
+          },
+        },
+      })
+      .catch(() => {
+        // Ignore if snapshot doesn't exist
+      });
   } catch (error) {
     logger.error("[linkAccount] Error during linking process:", {
       userId: account.userId,

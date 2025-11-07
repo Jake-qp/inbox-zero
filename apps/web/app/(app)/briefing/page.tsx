@@ -109,6 +109,7 @@ function BriefingContent({
           emails={account.emails}
           badge={account.badge}
           hasError={account.hasError}
+          errorType={account.errorType}
         />
       ))}
 

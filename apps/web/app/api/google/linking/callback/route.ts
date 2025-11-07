@@ -7,6 +7,7 @@ import { GOOGLE_LINKING_STATE_COOKIE_NAME } from "@/utils/gmail/constants";
 import { withError } from "@/utils/middleware";
 import { transferPremiumDuringMerge } from "@/utils/user/merge-premium";
 import { parseOAuthState } from "@/utils/oauth/state";
+import { saveTokens } from "@/utils/auth";
 
 const logger = createScopedLogger("google/linking/callback");
 
@@ -138,6 +139,20 @@ export const GET = withError(async (request) => {
     await transferPremiumDuringMerge({
       sourceUserId: existingAccount.userId,
       targetUserId,
+    });
+
+    // Save fresh OAuth tokens before updating relationships
+    await saveTokens({
+      tokens: {
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        expires_at: tokens.expiry_date
+          ? Math.floor(tokens.expiry_date / 1000)
+          : undefined,
+      },
+      accountRefreshToken: tokens.refresh_token || null,
+      providerAccountId,
+      provider: "google",
     });
 
     await prisma.$transaction([

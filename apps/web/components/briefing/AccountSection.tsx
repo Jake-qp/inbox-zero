@@ -13,6 +13,8 @@ import {
   isMicrosoftProvider,
 } from "@/utils/email/provider-types";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { signIn } from "@/utils/auth-client";
+import { SCOPES as GMAIL_SCOPES } from "@/utils/gmail/scopes";
 
 function getProviderIcon(provider: string) {
   // Simple icon display - can be enhanced with brand-specific icons later
@@ -30,6 +32,7 @@ export function AccountSection({
   emails,
   badge,
   hasError,
+  errorType,
 }: {
   account: {
     id: string;
@@ -44,9 +47,28 @@ export function AccountSection({
     hasUrgent: boolean;
   };
   hasError?: boolean;
+  errorType?: "AUTH_REQUIRED" | "OTHER";
 }) {
   const isMobile = useIsMobile();
   const [isCollapsed, setIsCollapsed] = useState(isMobile);
+
+  const handleReconnect = async () => {
+    const isGoogle = isGoogleProvider(account.provider);
+    const isMicrosoft = isMicrosoftProvider(account.provider);
+
+    if (isGoogle) {
+      await signIn.social({
+        provider: "google",
+        callbackURL: "/briefing",
+        scopes: GMAIL_SCOPES,
+      });
+    } else if (isMicrosoft) {
+      await signIn.social({
+        provider: "microsoft",
+        callbackURL: "/briefing",
+      });
+    }
+  };
 
   return (
     <Card>
@@ -80,10 +102,20 @@ export function AccountSection({
       </CardHeader>
       {!isCollapsed && (
         <CardContent className="space-y-2 p-4 md:p-6 pt-0">
-          {hasError && (
+          {hasError && errorType === "AUTH_REQUIRED" && (
+            <Alert variant="warning" className="mt-2">
+              <AlertDescription className="flex items-center justify-between gap-2 flex-wrap">
+                <span>Authentication expired for this account.</span>
+                <Button onClick={handleReconnect} size="sm" variant="default">
+                  Reconnect
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+          {hasError && errorType !== "AUTH_REQUIRED" && (
             <Alert variant="destructive" className="mt-2">
-              <AlertDescription>
-                Failed to load emails for this account.{" "}
+              <AlertDescription className="flex items-center justify-between gap-2 flex-wrap">
+                <span>Failed to load emails for this account.</span>
                 <Button variant="link" onClick={() => window.location.reload()}>
                   Retry
                 </Button>
