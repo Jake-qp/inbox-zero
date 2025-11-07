@@ -558,7 +558,7 @@ export default function BriefingSettings() {
 
 ---
 
-### Task 4.4: Error Handling [ ]
+### Task 4.4: Error Handling [DONE]
 
 **Update:** AccountSection component (add hasError prop handling)
 
@@ -577,6 +577,13 @@ export default function BriefingSettings() {
 ```
 
 **Update plan:** Mark DONE
+
+**Notes for next task:**
+- AccountSection error handling updated to use Alert + AlertDescription from @/components/ui/alert
+- Replaced AlertError component with Alert variant="destructive" for consistency with task spec
+- Added retry button that reloads the page when clicked
+- Error message displays when hasError prop is true, positioned at top of CardContent with mt-2 spacing
+- Retry button uses variant="link" for inline styling within AlertDescription
 
 ## Final Verification
 

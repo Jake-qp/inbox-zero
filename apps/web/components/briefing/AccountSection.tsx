@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { AlertError } from "@/components/Alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { ParsedMessage } from "@/utils/types";
 import { EmailCard } from "./EmailCard";
 import {
@@ -81,10 +81,14 @@ export function AccountSection({
       {!isCollapsed && (
         <CardContent className="space-y-2 p-4 md:p-6 pt-0">
           {hasError && (
-            <AlertError
-              title="Failed to load"
-              description="Failed to load emails for this account."
-            />
+            <Alert variant="destructive" className="mt-2">
+              <AlertDescription>
+                Failed to load emails for this account.{" "}
+                <Button variant="link" onClick={() => window.location.reload()}>
+                  Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
           )}
           {emails.length > 0
             ? emails.map((email) => (
