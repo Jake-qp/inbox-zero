@@ -250,7 +250,7 @@ Return format (one line per email, no explanation):
 
 ---
 
-### Task 1.4: Server Action [ ]
+### Task 1.4: Server Action [DONE]
 
 **Update:** `apps/web/utils/actions/email-account.validation.ts`
 - Add: `updateBriefingGuidanceBody` Zod schema
@@ -264,6 +264,13 @@ Return format (one line per email, no explanation):
 **Test:** Action updates database
 
 **Update plan:** Mark DONE
+
+**Notes for next task:**
+- File created: `apps/web/utils/actions/email-account.validation.ts` with `updateBriefingGuidanceBody` schema (accepts nullable string)
+- Action added: `updateBriefingGuidanceAction` in `email-account.ts` - uses `actionClient` pattern, requires `emailAccountId` as bind arg
+- Action updates `EmailAccount.briefingGuidance` field in database
+- Schema allows `null` to reset guidance to default (matches Prisma `String?` type)
+- Action follows existing patterns from `updateEmailAccountRoleAction` and `updateReferralSignatureAction`
 
 ## Phase 2: Main UI
 

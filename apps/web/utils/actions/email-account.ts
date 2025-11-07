@@ -10,6 +10,7 @@ import { SafeError } from "@/utils/error";
 import { getEmailForLLM } from "@/utils/get-email-from-message";
 import { z } from "zod";
 import { updateContactRole } from "@inboxzero/loops";
+import { updateBriefingGuidanceBody } from "@/utils/actions/email-account.validation";
 
 export const updateEmailAccountRoleAction = actionClient
   .metadata({ name: "updateEmailAccountRole" })
@@ -116,3 +117,16 @@ export const fetchSignaturesFromProviderAction = actionClient
 
     return { signatures };
   });
+
+// Daily Briefing - Custom addition
+export const updateBriefingGuidanceAction = actionClient
+  .metadata({ name: "updateBriefingGuidance" })
+  .schema(updateBriefingGuidanceBody)
+  .action(
+    async ({ ctx: { emailAccountId }, parsedInput: { briefingGuidance } }) => {
+      await prisma.emailAccount.update({
+        where: { id: emailAccountId },
+        data: { briefingGuidance },
+      });
+    },
+  );
