@@ -397,7 +397,7 @@ export function useBriefing(date?: string) {
 
 ---
 
-### Task 2.7: Sidebar Link [ ]
+### Task 2.7: Sidebar Link [DONE]
 
 **Find sidebar navigation:**
 - Search codebase for "app-sidebar" component
@@ -420,6 +420,14 @@ export function useBriefing(date?: string) {
 **Position:** Near existing "Mail" or "Inbox" link
 
 **Update plan:** Mark DONE
+
+**Notes for next task:**
+- Sidebar link added to `apps/web/components/SideNav.tsx` in Platform section
+- Link positioned at top of Platform group, before other navigation items
+- Uses `SparklesIcon` from lucide-react (matches existing icon imports)
+- Link href is `/briefing` (user-level route, no account prefix needed)
+- Marked with comment "Daily Briefing - Custom addition" for upstream safety
+- Link appears in sidebar when not in mail view (same condition as other Platform items)
 
 ---
 

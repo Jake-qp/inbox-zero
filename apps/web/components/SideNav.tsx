@@ -227,6 +227,17 @@ export function SideNav({ ...props }: React.ComponentProps<typeof Sidebar>) {
           ) : (
             <SidebarGroup>
               <SidebarGroupLabel>Platform</SidebarGroupLabel>
+              {/* Daily Briefing - Custom addition */}
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <Link href="/briefing">
+                      <SparklesIcon />
+                      <span>Daily Briefing</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
               <SideNavMenu items={navigation.navItems} activeHref={path} />
             </SidebarGroup>
           )}
