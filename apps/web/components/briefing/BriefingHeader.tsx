@@ -2,8 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Settings } from "lucide-react";
-import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { PageHeading } from "@/components/Typography";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -63,6 +62,10 @@ export function BriefingHeader({
     router.push(`/briefing?date=${today}`);
   };
 
+  const handleSettingsTab = () => {
+    router.push("/briefing/settings");
+  };
+
   return (
     <Tabs defaultValue={mode} className="border-b border-border pb-4">
       <div className="flex items-center justify-between">
@@ -76,8 +79,8 @@ export function BriefingHeader({
               <TabsTrigger value="history" onClick={handleHistoryTab}>
                 History
               </TabsTrigger>
-              <TabsTrigger value="settings" asChild>
-                <Link href="/briefing/settings">Settings</Link>
+              <TabsTrigger value="settings" onClick={handleSettingsTab}>
+                Settings
               </TabsTrigger>
             </TabsList>
           </div>
