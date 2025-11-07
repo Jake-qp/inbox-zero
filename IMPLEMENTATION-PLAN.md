@@ -1,8 +1,12 @@
 # Daily Briefing - Implementation Plan
 
-**Route:** `/briefing?date=YYYY-MM-DD` (user-level, all accounts, historical)  
+**Version:** 2.0 (Inbox-First Pivot)  
+**Route:** `/briefing` (inbox mode) or `/briefing?date=YYYY-MM-DD` (history mode)  
 **Auth:** `withAuth` (not `withEmailAccount`)  
-**Key Feature:** Historical snapshots with smart caching
+**Key Feature:** Multi-account inbox to-do list with AI scoring (Inbox mode) + Historical snapshots (History mode)
+
+**Phases 1-6:** ✅ Complete (Calendar day implementation)  
+**Phase 7:** 🔧 In Progress (Inbox-First pivot)
 
 ---
 
@@ -129,24 +133,23 @@
 - **Triggers:** `success=account_merged` or `success=account_added` params
 - **UX:** Shows toast "Account connected! Your briefing will update shortly."
 
-## Verification Checklist
+## Verification Checklist (Phases 1-6 - Already Done)
 
 **Core Flows:**
-- [ ] Today's briefing: Loads emails from all accounts, only shows scores >=6, urgent section (>=9), warning banner if >=20
-- [ ] Historical navigation: Past day shows ONLY that day's emails (bounded range), generates and caches on first view
-- [ ] Date navigation: Prev/Next/Today buttons work, Next disabled when viewing today
-- [ ] Date validation: Future date → "Cannot view future" error, 100+ days ago → "Not available" error
-- [ ] Settings: Save/reset works per account (applies to currently selected in dropdown)
-- [ ] Actions: Reply/Archive/View navigate to correct account pages, archive uses `store/archive-queue`
-- [ ] States: Loading skeleton, error boundary with retry, empty state
-- [ ] Responsive: Mobile (375px), tablet (768px), desktop (1024px) - accounts collapse, actions stack
-- [ ] Performance: Today generation <3s, cached past <1s
+- [x] Calendar day briefing: Loads emails from all accounts, only shows scores >=6, urgent section (>=9)
+- [x] Date navigation: Prev/Next/Today buttons work
+- [x] Date validation: Future date → error, 100+ days ago → error
+- [x] Settings: Save/reset works per account
+- [x] Actions: Reply/Archive/View navigate correctly, archive uses `store/archive-queue`
+- [x] States: Loading skeleton, error boundary, empty state
+- [x] Responsive: Mobile/tablet/desktop breakpoints
+- [x] Performance: Generation <3s, cached <1s
 
 **Token Management:**
-- [ ] Expired tokens: Show "Reconnect" button (warning alert)
-- [ ] Reconnect flow: Click → OAuth → briefing loads emails
-- [ ] Merge flow: Add via "Select existing" → saves tokens correctly
-- [ ] Data preservation: After reconnect, all rules/labels/settings intact
+- [x] Expired tokens: Show "Reconnect" button
+- [x] Reconnect flow: OAuth → briefing loads
+- [x] Merge flow: Saves tokens correctly
+- [x] Data preservation: Rules/labels/settings intact
 
 ---
 
@@ -169,5 +172,121 @@
 
 ## Status
 
-✅ **COMPLETE** - All phases done, token management verified, ready for testing
+⚠️ **PIVOT REQUIRED** - Phases 1-6 complete, Phase 7 needed for Inbox-First pivot
+
+---
+
+## Phase 7: Inbox-First Pivot [IN PROGRESS]
+
+**Goal:** Add Inbox mode (all inbox emails, no time limit) while keeping History mode (existing calendar day logic)
+
+**What Stays:** Database schema, AI scoring, settings, token management, all components (modify, don't replace)  
+**What Changes:** API routing logic, header UI, add mode tabs, provider queries
+
+### 7.1 Update API Route - Inbox Mode ✅ DONE
+- **File:** `apps/web/app/api/ai/briefing/route.ts`
+- **Add to type (line 13):** `atLimit?: boolean` to account array objects in `BriefingResponse`
+- **Modify GET handler (starting line 211):**
+  * Detect mode: `const mode = dateParam ? 'history' : 'inbox'`
+  * For Inbox mode: Skip date validation/normalization, don't calculate startOfDay/endOfDay
+  * For History mode: Keep existing logic (lines 222-248 unchanged)
+  * Skip snapshot check/upsert for Inbox mode (lines 250-285 only run in History mode)
+- **Modify generateBriefing (line 34):**
+  * Change signature: `generateBriefing(userId, mode, startDate?, endDate?)`
+  * In email account loop (line 72), check provider before calling `getMessagesWithPagination()`
+  * For Inbox mode + Gmail: `{ query: "in:inbox -in:trash -in:spam", maxResults: 100 }`
+  * For Inbox mode + Outlook: `{ maxResults: 100 }` (no query param)
+  * For History mode: Keep existing `{ after: startDate, before: endDate, maxResults: 100 }` for both
+  * Check provider with: `emailAccount.account.provider === 'google'` or use `isGoogleProvider()` helper
+  * Add `atLimit` detection after fetch: `const atLimit = messages.length >= 100`
+  * Return `atLimit` in account result object (add to line 101-115 return)
+- **Notes for next task:** `BriefingResponse` type now includes `atLimit?: boolean` in account objects. Mode detection works: no date param = inbox mode, date param = history mode. Inbox mode skips snapshot caching and date validation. Provider-specific queries implemented: Gmail uses `query: "in:inbox -in:trash -in:spam"`, Outlook defaults to inbox folder when no query provided. All error return cases include `atLimit: false`.
+
+### 7.2 Update BriefingHeader Component  
+- **File:** `apps/web/components/briefing/BriefingHeader.tsx`
+- **Add props:** `mode: 'inbox' | 'history'`
+- **Add imports:** `Tabs`, `TabsList`, `TabsTrigger` from `@/components/ui/tabs`, `useRouter`, `useSearchParams`
+- **Changes:**
+  * Wrap existing content in `<Tabs value={mode}>`
+  * Add `<TabsList>`: Inbox / History / Settings tabs
+  * Conditionally render date navigation: Only show when `mode === 'history'`
+  * For Inbox mode: Show `{totalShown} important emails in inbox` (use existing totalShown prop)
+  * Tab handlers: `router.push('/briefing')` for Inbox, `router.push('/briefing?date=${today}')` for History
+- **Keep:** Prev/Next/Today button logic (only visible in History mode)
+
+### 7.3 Update Main Page
+- **File:** `apps/web/app/(app)/briefing/page.tsx`
+- **Modify BriefingContent (line 60):**
+  * Add `mode` calculation: `const mode = currentDate === new Date().toISOString().split('T')[0] && !params.date ? 'inbox' : 'history'`
+  * Pass to BriefingHeader: `<BriefingHeader mode={mode} .../>`
+  * Pass `atLimit` to AccountSection: `<AccountSection atLimit={account.atLimit} .../>`
+- **Keep unchanged:** Error handling (FUTURE_DATE, OLD_DATE), urgent extraction, warning logic
+- **Note:** Inbox mode (no date param) skips date validation errors
+
+### 7.4 Add Inbox Limit Warning
+- **File:** `apps/web/components/briefing/AccountSection.tsx`
+- **Add prop (line 36):** `atLimit?: boolean` to component signature
+- **Add import:** `Alert`, `AlertDescription` already imported
+- **Add warning (line 105, after AUTH_REQUIRED alert, before emails.length check):**
+  ```tsx
+  {atLimit && !hasError && (
+    <Alert variant="warning" className="mt-2">
+      <AlertDescription>
+        This account has 100+ inbox emails. Archive emails to see all important items.
+      </AlertDescription>
+    </Alert>
+  )}
+  ```
+- **Pass from parent (page.tsx):** Add `atLimit={account.atLimit}` to AccountSection props
+
+### 7.5 Add SWR Revalidation After Archive
+- **File:** `apps/web/components/briefing/EmailCard.tsx`
+- **Add import (line 1):** `import { mutate } from "swr"`
+- **Modify handleArchive (line 45-63):**
+  * Update `onSuccess` callback (currently line 50-52):
+    ```tsx
+    onSuccess: () => {
+      toastSuccess({ description: "Email archived" });
+      mutate("/api/ai/briefing"); // Add this line
+    }
+    ```
+- **Result:** After archive, briefing refetches. Gmail query excludes archived (not in inbox), Outlook query excludes (not in inbox folder)
+- **Performance:** Refetch takes ~2-3s (fetch + AI scoring), email disappears after refetch completes
+
+### 7.6 Update Footer Text
+- **File:** `apps/web/components/briefing/BriefingHeader.tsx`
+- **Update footer for Inbox mode:** Change from "Showing emails for {date}" to "Shows: All important inbox emails"
+- **Keep for History mode:** "Showing emails for {date}"
+
+---
+
+## Phase 7 Verification Checklist
+
+**Inbox Mode (New):**
+- [ ] No date param → Fetches all inbox emails (no time limit)
+- [ ] Gmail: Uses query `in:inbox -in:trash -in:spam`
+- [ ] Outlook: Inbox folder only
+- [ ] Max 100 emails per account, warning shown if at limit
+- [ ] Archive → mutate() call → email disappears from view
+- [ ] Tabs: Inbox (active by default), History, Settings
+- [ ] Header shows: "X important emails in inbox" (no date)
+- [ ] Footer shows: "All important inbox emails"
+
+**History Mode (Existing - Keep Working):**
+- [ ] Date param present → Shows that specific day's snapshot
+- [ ] Date navigation visible (Prev/Next/Today)
+- [ ] "Today" button returns to Inbox mode (no date param)
+- [ ] Cached permanently, fast load (<1s)
+
+**Mode Switching:**
+- [ ] Inbox tab → navigates to `/briefing`
+- [ ] History tab → navigates to `/briefing?date=${today}`
+- [ ] Tab highlighting based on URL (date param present/absent)
+- [ ] Date navigation only visible in History mode
+
+---
+
+## Updated Status
+
+🔧 **PHASE 7 IN PROGRESS** - Inbox-First pivot implementation
 
