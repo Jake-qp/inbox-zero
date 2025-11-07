@@ -306,7 +306,7 @@ export function useBriefing(date?: string) {
 
 ---
 
-### Task 2.2: Main Page [ ]
+### Task 2.2: Main Page [DONE]
 
 **Create:** `apps/web/app/(app)/briefing/page.tsx`
 
@@ -326,6 +326,15 @@ export function useBriefing(date?: string) {
 **Reference:** `apps/web/app/(app)/[emailAccountId]/mail/page.tsx`
 
 **Update plan:** Mark DONE
+
+**Notes for next task:**
+- File created: `apps/web/app/(app)/briefing/page.tsx`
+- Basic components created in `apps/web/components/briefing/`: BriefingHeader, UrgentSection, AccountSection, EmailCard, EmptyState
+- Components are functional but will be enhanced in Task 2.3-2.6 (provider icons, archive action, etc.)
+- Page handles all error cases (FUTURE_DATE, OLD_DATE) and empty states
+- Urgent emails extracted from all accounts and displayed in separate section
+- Warning alert shown when urgent count >= 20
+- Date navigation implemented in BriefingHeader (Previous/Next/Today buttons)
 
 ---
 
