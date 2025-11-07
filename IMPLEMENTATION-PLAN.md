@@ -225,7 +225,7 @@
 - **Note:** Inbox mode (no date param) skips date validation errors
 - **Notes for next task:** Mode calculation already existed (lines 74-77), verified it matches spec. Added `atLimit={account.atLimit}` prop to AccountSection call (line 126). Also added `atLimit?: boolean` prop signature to AccountSection component (needed for TypeScript compilation). AccountSection now accepts `atLimit` prop and is ready for task 7.4 to add the warning UI.
 
-### 7.4 Add Inbox Limit Warning
+### 7.4 Add Inbox Limit Warning ✅ DONE
 - **File:** `apps/web/components/briefing/AccountSection.tsx`
 - **Add prop (line 36):** `atLimit?: boolean` to component signature
 - **Add import:** `Alert`, `AlertDescription` already imported
@@ -240,8 +240,9 @@
   )}
   ```
 - **Pass from parent (page.tsx):** Add `atLimit={account.atLimit}` to AccountSection props
+- **Notes for next task:** Warning alert added at lines 127-133 in AccountSection.tsx. Shows when `atLimit` is true and there's no error (`!hasError`). Uses `variant="warning"` matching existing pattern (same as AUTH_REQUIRED alert). Warning appears after error alerts and before email list rendering. The `atLimit` prop was already added in task 7.3, and is already being passed from page.tsx (line 126).
 
-### 7.5 Add SWR Revalidation After Archive
+### 7.5 Add SWR Revalidation After Archive ✅ DONE
 - **File:** `apps/web/components/briefing/EmailCard.tsx`
 - **Add import (line 1):** `import { mutate } from "swr"`
 - **Modify handleArchive (line 45-63):**
@@ -254,11 +255,13 @@
     ```
 - **Result:** After archive, briefing refetches. Gmail query excludes archived (not in inbox), Outlook query excludes (not in inbox folder)
 - **Performance:** Refetch takes ~2-3s (fetch + AI scoring), email disappears after refetch completes
+- **Notes for next task:** Added `import { mutate } from "swr"` at line 5. Added `mutate("/api/ai/briefing")` call in `onSuccess` callback at line 53. This triggers SWR refetch after successful archive, causing the briefing to update and remove archived emails from view. The mutate call uses the base URL `/api/ai/briefing` which works for inbox mode; history mode keys would need a matcher function if full invalidation is desired (not required per spec).
 
-### 7.6 Update Footer Text
+### 7.6 Update Footer Text ✅ DONE
 - **File:** `apps/web/components/briefing/BriefingHeader.tsx`
 - **Update footer for Inbox mode:** Change from "Showing emails for {date}" to "Shows: All important inbox emails"
 - **Keep for History mode:** "Showing emails for {date}"
+- **Notes for next task:** Footer added at bottom of BriefingHeader component (lines 136-146). Conditionally renders based on `mode` prop: Inbox mode shows "Shows: All important inbox emails", History mode shows "Showing emails for {formattedDate}". Footer uses `text-sm text-muted-foreground` styling matching existing patterns. Positioned with `mt-4` spacing after the main header content.
 
 ---
 

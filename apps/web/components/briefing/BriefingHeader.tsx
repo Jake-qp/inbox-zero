@@ -133,6 +133,17 @@ export function BriefingHeader({
           </div>
         )}
       </div>
+      <div className="mt-4">
+        {mode === "inbox" ? (
+          <p className="text-sm text-muted-foreground">
+            Shows: All important inbox emails
+          </p>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Showing emails for {formattedDate}
+          </p>
+        )}
+      </div>
     </Tabs>
   );
 }

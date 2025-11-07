@@ -124,6 +124,14 @@ export function AccountSection({
               </AlertDescription>
             </Alert>
           )}
+          {atLimit && !hasError && (
+            <Alert variant="warning" className="mt-2">
+              <AlertDescription>
+                This account has 100+ inbox emails. Archive emails to see all
+                important items.
+              </AlertDescription>
+            </Alert>
+          )}
           {emails.length > 0
             ? emails.map((email) => (
                 <EmailCard

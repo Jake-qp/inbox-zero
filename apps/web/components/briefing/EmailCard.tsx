@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { mutate } from "swr";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +50,7 @@ export function EmailCard({
         threadIds: [email.threadId],
         onSuccess: () => {
           toastSuccess({ description: "Email archived" });
+          mutate("/api/ai/briefing");
         },
         onError: () => {
           toastError({ description: "Failed to archive email" });
