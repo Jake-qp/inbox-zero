@@ -43,7 +43,6 @@ import { extractNameFromEmail } from "@/utils/email";
 import { formatShortDate } from "@/utils/date";
 import { decodeSnippet } from "@/utils/gmail/decode";
 import { getEmailUrlForMessage } from "@/utils/url";
-import { mutate } from "swr";
 
 export function BriefingEmailModal({
   email,
@@ -55,6 +54,7 @@ export function BriefingEmailModal({
   onPrevious,
   hasNext,
   hasPrevious,
+  onArchive,
 }: {
   email: (ParsedMessage & { score: number }) | null;
   accountId: string;
@@ -65,6 +65,7 @@ export function BriefingEmailModal({
   onPrevious?: () => void;
   hasNext?: boolean;
   hasPrevious?: boolean;
+  onArchive?: (threadId: string) => void;
 }) {
   const [replyMode, setReplyMode] = useState<"reply" | "replyAll" | null>(null);
   const [isArchiving, setIsArchiving] = useState(false);
@@ -123,12 +124,18 @@ export function BriefingEmailModal({
     if (!email) return;
 
     setIsArchiving(true);
+
+    // Call parent's onArchive for optimistic update
+    onArchive?.(email.threadId);
+
+    // Close modal immediately
+    onClose();
+
+    // Archive in background
     await archiveEmails({
       threadIds: [email.threadId],
       onSuccess: () => {
         toastSuccess({ description: "Email archived" });
-        onClose();
-        mutate("/api/ai/briefing");
       },
       onError: () => {
         toastError({ description: "Failed to archive email" });
@@ -136,18 +143,23 @@ export function BriefingEmailModal({
       },
       emailAccountId: accountId,
     });
-  }, [email, accountId, onClose]);
+  }, [email, accountId, onClose, onArchive]);
 
   const handleDelete = useCallback(async () => {
     if (!email) return;
 
     setIsDeleting(true);
+
+    // Call parent's onArchive for optimistic update (delete also removes from view)
+    onArchive?.(email.threadId);
+
+    // Close modal immediately
+    onClose();
+
     await deleteEmails({
       threadIds: [email.threadId],
       onSuccess: () => {
         toastSuccess({ description: "Email deleted" });
-        onClose();
-        mutate("/api/ai/briefing");
       },
       onError: () => {
         toastError({ description: "Failed to delete email" });
@@ -155,12 +167,16 @@ export function BriefingEmailModal({
       },
       emailAccountId: accountId,
     });
-  }, [email, accountId, onClose]);
+  }, [email, accountId, onClose, onArchive]);
 
   const handleMarkUnread = useCallback(async () => {
     if (!email) return;
 
     setIsMarkingUnread(true);
+
+    // Close modal immediately
+    onClose();
+
     try {
       const result = await markReadThreadAction(accountId, {
         threadId: email.threadId,
@@ -171,15 +187,13 @@ export function BriefingEmailModal({
         toastError({ description: "Failed to mark as unread" });
       } else {
         toastSuccess({ description: "Marked as unread" });
-        onClose();
-        mutate("/api/ai/briefing");
       }
     } catch (error) {
       toastError({ description: "Failed to mark as unread" });
     } finally {
       setIsMarkingUnread(false);
     }
-  }, [email, onClose]);
+  }, [email, accountId, onClose]);
 
   const handleOpenInEmailClient = useCallback(() => {
     if (!email) return;
@@ -197,7 +211,6 @@ export function BriefingEmailModal({
     toastSuccess({ description: "Reply sent!" });
     setReplyMode(null);
     onClose();
-    mutate("/api/ai/briefing");
   }, [onClose]);
 
   // Keyboard shortcuts

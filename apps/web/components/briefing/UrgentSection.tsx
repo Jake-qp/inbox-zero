@@ -10,6 +10,7 @@ import { EmailCard } from "./EmailCard";
 export function UrgentSection({
   emails,
   onViewEmail,
+  onArchive,
 }: {
   emails: Array<
     ParsedMessage & {
@@ -25,6 +26,7 @@ export function UrgentSection({
     accountEmail: string,
     accountProvider: string,
   ) => void;
+  onArchive?: (threadId: string) => void;
 }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -99,6 +101,7 @@ export function UrgentSection({
                   email.accountProvider,
                 )
               }
+              onArchive={onArchive}
             />
           ))}
         </CardContent>

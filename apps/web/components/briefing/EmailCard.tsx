@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { mutate } from "swr";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,12 +24,14 @@ export function EmailCard({
   accountEmail,
   accountProvider,
   onView,
+  onArchive,
 }: {
   email: ParsedMessage & { score: number };
   accountId: string;
   accountEmail: string;
   accountProvider: string;
   onView?: (email: ParsedMessage & { score: number }) => void;
+  onArchive?: (threadId: string) => void;
 }) {
   const [isArchiving, setIsArchiving] = useState(false);
   const fromName = extractNameFromEmail(email.headers.from);
@@ -73,13 +74,15 @@ export function EmailCard({
 
   const handleArchive = async () => {
     setIsArchiving(true);
+
+    // Call parent's onArchive for optimistic update
+    onArchive?.(email.threadId);
+
     try {
       await archiveEmails({
         threadIds: [email.threadId],
         onSuccess: () => {
           toastSuccess({ description: "Email archived" });
-          // Refresh briefing data to remove archived email from list
-          mutate("/api/ai/briefing");
         },
         onError: () => {
           toastError({ description: "Failed to archive email" });

@@ -47,6 +47,7 @@ export function AccountSection({
   errorType,
   atLimit,
   onViewEmail,
+  onArchive,
 }: {
   account: {
     id: string;
@@ -69,6 +70,7 @@ export function AccountSection({
     accountEmail: string,
     accountProvider: string,
   ) => void;
+  onArchive?: (threadId: string) => void;
 }) {
   const isMobile = useIsMobile();
   const [isCollapsed, setIsCollapsed] = useState(isMobile);
@@ -202,6 +204,7 @@ export function AccountSection({
                       account.provider,
                     )
                   }
+                  onArchive={onArchive}
                 />
               ))
             : !hasError && (

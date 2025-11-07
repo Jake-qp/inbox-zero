@@ -83,6 +83,11 @@ function BriefingContent({
   refresh: () => void;
   isRefreshing: boolean;
 }) {
+  // Track locally archived emails for optimistic UI updates
+  const [archivedThreadIds, setArchivedThreadIds] = useState<Set<string>>(
+    new Set(),
+  );
+
   // Modal state
   const [selectedEmail, setSelectedEmail] = useState<{
     email: ParsedMessage & { score: number };
@@ -98,8 +103,25 @@ function BriefingContent({
       ? "inbox"
       : "history";
 
+  // Filter out archived emails from the data
+  const filteredData = {
+    ...data,
+    accounts: data.accounts.map((account) => ({
+      ...account,
+      emails: account.emails.filter(
+        (email) => !archivedThreadIds.has(email.threadId),
+      ),
+      badge: {
+        ...account.badge,
+        count: account.emails.filter(
+          (email) => !archivedThreadIds.has(email.threadId),
+        ).length,
+      },
+    })),
+  };
+
   // Extract urgent emails (score >= 9) from all accounts
-  const urgentEmails = data.accounts.flatMap((account) =>
+  const urgentEmails = filteredData.accounts.flatMap((account) =>
     account.emails
       .filter((email) => email.score >= 9)
       .map((email) => ({
@@ -111,7 +133,7 @@ function BriefingContent({
   );
 
   // Flatten all emails for navigation
-  const allEmails = data.accounts.flatMap((account) =>
+  const allEmails = filteredData.accounts.flatMap((account) =>
     account.emails.map((email) => ({
       email,
       accountId: account.account.id,
@@ -189,11 +211,20 @@ function BriefingContent({
       )}
 
       {urgentEmails.length > 0 && (
-        <UrgentSection emails={urgentEmails} onViewEmail={handleViewEmail} />
+        <UrgentSection
+          emails={urgentEmails}
+          onViewEmail={handleViewEmail}
+          onArchive={(threadId) => {
+            // Optimistically add to archived list
+            setArchivedThreadIds((prev) => new Set([...prev, threadId]));
+            // Refresh in background
+            setTimeout(() => refresh(), 1000);
+          }}
+        />
       )}
 
       <div className="space-y-3">
-        {data.accounts.map((account) => (
+        {filteredData.accounts.map((account) => (
           <AccountSection
             key={account.account.id}
             account={account.account}
@@ -203,11 +234,17 @@ function BriefingContent({
             errorType={account.errorType}
             atLimit={account.atLimit}
             onViewEmail={handleViewEmail}
+            onArchive={(threadId) => {
+              // Optimistically add to archived list
+              setArchivedThreadIds((prev) => new Set([...prev, threadId]));
+              // Refresh in background
+              setTimeout(() => refresh(), 1000);
+            }}
           />
         ))}
       </div>
 
-      {data.totalShown === 0 && (
+      {filteredData.accounts.every((a) => a.emails.length === 0) && (
         <EmptyState message="All clear! No important emails today." />
       )}
 
@@ -224,6 +261,12 @@ function BriefingContent({
           selectedEmail ? selectedEmail.index < allEmails.length - 1 : false
         }
         hasPrevious={selectedEmail ? selectedEmail.index > 0 : false}
+        onArchive={(threadId) => {
+          // Optimistically add to archived list
+          setArchivedThreadIds((prev) => new Set([...prev, threadId]));
+          // Refresh in background
+          setTimeout(() => refresh(), 1000);
+        }}
       />
     </div>
   );
