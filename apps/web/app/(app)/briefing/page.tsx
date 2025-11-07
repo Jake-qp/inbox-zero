@@ -20,7 +20,9 @@ export default function BriefingPage(props: {
   const params = use(props.searchParams);
   const currentDate = params.date || new Date().toISOString().split("T")[0];
 
-  const { data, error, isLoading, refresh } = useBriefing(params.date);
+  const { data, error, isLoading, refresh, isRefreshing } = useBriefing(
+    params.date,
+  );
 
   // Handle API errors
   const apiError = error as
@@ -60,7 +62,7 @@ export default function BriefingPage(props: {
             currentDate={currentDate}
             params={params}
             refresh={refresh}
-            isRefreshing={isLoading}
+            isRefreshing={isRefreshing}
           />
         ) : (
           <EmptyState message="No briefing data available." />
@@ -217,8 +219,6 @@ function BriefingContent({
           onArchive={(threadId) => {
             // Optimistically add to archived list
             setArchivedThreadIds((prev) => new Set([...prev, threadId]));
-            // Refresh in background
-            setTimeout(() => refresh(), 1000);
           }}
         />
       )}
@@ -237,8 +237,6 @@ function BriefingContent({
             onArchive={(threadId) => {
               // Optimistically add to archived list
               setArchivedThreadIds((prev) => new Set([...prev, threadId]));
-              // Refresh in background
-              setTimeout(() => refresh(), 1000);
             }}
           />
         ))}
@@ -264,8 +262,6 @@ function BriefingContent({
         onArchive={(threadId) => {
           // Optimistically add to archived list
           setArchivedThreadIds((prev) => new Set([...prev, threadId]));
-          // Refresh in background
-          setTimeout(() => refresh(), 1000);
         }}
       />
     </div>

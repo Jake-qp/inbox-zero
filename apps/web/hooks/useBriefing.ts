@@ -11,5 +11,6 @@ export function useBriefing(date?: string) {
   return {
     ...result,
     refresh: () => result.mutate(),
+    isRefreshing: result.isValidating,
   };
 }
