@@ -433,7 +433,7 @@ export function useBriefing(date?: string) {
 
 ## Phase 3: Settings
 
-### Task 3.1: Settings Page [ ]
+### Task 3.1: Settings Page [DONE]
 
 **Create:** `apps/web/app/(app)/briefing/settings/page.tsx`
 
@@ -502,6 +502,16 @@ export default function BriefingSettings() {
 **Reference:** `apps/web/app/(app)/[emailAccountId]/settings/` pages
 
 **Update plan:** Mark DONE
+
+**Notes for next task:**
+- File created: `apps/web/app/(app)/briefing/settings/page.tsx`
+- API route created: `apps/web/app/api/user/briefing-guidance/route.ts` to fetch briefingGuidance (since GetEmailAccountsResponse doesn't include it)
+- Settings page uses `useAction` hook for proper error handling and loading states
+- Page uses `PageWrapper` and `PageHeader` components for consistent layout
+- Guidance is fetched using SWR and refetched after save using `mutateGuidance()`
+- Settings apply to the currently selected account from EmailAccountProvider
+- Reset button clears guidance (sets to empty string, which saves as null in DB)
+- Loading states handled with `LoadingContent` and `Skeleton` components
 
 ---
 
