@@ -83,7 +83,7 @@ function BriefingContent({
 }: {
   data: BriefingResponse;
   currentDate: string;
-  params: { date?: string };
+  params: { date?: string; tab?: string };
   refresh: () => void;
   isRefreshing: boolean;
 }) {
