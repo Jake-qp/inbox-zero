@@ -21,9 +21,33 @@ import { prefixPath } from "@/utils/path";
 import { AddAccount } from "@/app/(app)/accounts/AddAccount";
 import { PageHeader } from "@/components/PageHeader";
 import { PageWrapper } from "@/components/PageWrapper";
+import { useEffect } from "react";
+import { mutate as swrMutate } from "swr";
 
 export default function AccountsPage() {
   const { data, isLoading, error, mutate } = useAccounts();
+
+  // Daily Briefing - Custom addition: Invalidate briefing cache after OAuth success
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const success = params.get("success");
+
+    if (success === "account_merged" || success === "account_added") {
+      // Invalidate briefing cache so it refetches with new account
+      swrMutate(
+        (key) => typeof key === "string" && key.startsWith("/api/ai/briefing"),
+        undefined,
+        { revalidate: true },
+      );
+
+      toastSuccess({
+        description: "Account connected! Your briefing will update shortly.",
+      });
+
+      // Clean URL
+      window.history.replaceState({}, "", "/accounts");
+    }
+  }, []);
 
   return (
     <PageWrapper>

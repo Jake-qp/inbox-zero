@@ -122,6 +122,13 @@
 ### 6.2 Merge Flow Testing
 - Status: PENDING - needs manual verification after reconnect
 
+### 6.3 Cache Invalidation Fix
+- **Issue:** New account added but briefing doesn't show it (SWR client cache stale)
+- **File:** `app/(app)/accounts/page.tsx`
+- **Solution:** Added `useEffect` that invalidates briefing cache on OAuth success
+- **Triggers:** `success=account_merged` or `success=account_added` params
+- **UX:** Shows toast "Account connected! Your briefing will update shortly."
+
 ## Verification Checklist
 
 **Core Flows:**
@@ -154,6 +161,7 @@
 - `app/api/google/linking/callback/route.ts` - Bug fix: saves tokens in merge flow
 - `app/api/outlook/linking/callback/route.ts` - Bug fix: saves tokens in merge flow
 - `utils/auth.ts` - Cache invalidation in `handleLinkAccount()`
+- `app/(app)/accounts/page.tsx` - SWR cache invalidation on OAuth success (marked)
 
 **Merge Strategy:** Favor upstream, re-apply marked additions. Token fixes are upstream-safe (add missing logic).
 
