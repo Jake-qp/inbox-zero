@@ -2,7 +2,25 @@ function getGmailBaseUrl(emailAddress?: string | null) {
   return `https://mail.google.com/mail/u/${emailAddress || 0}`;
 }
 
-function getOutlookBaseUrl() {
+// Microsoft personal email domains
+const MICROSOFT_PERSONAL_DOMAINS = new Set([
+  "outlook.com",
+  "hotmail.com",
+  "live.com",
+  "msn.com",
+  "passport.com",
+]);
+
+function getOutlookBaseUrl(emailAddress?: string | null) {
+  // Check if it's a business account (not a personal Microsoft domain)
+  if (emailAddress) {
+    const domain = emailAddress.split("@")[1]?.toLowerCase();
+    if (domain && !MICROSOFT_PERSONAL_DOMAINS.has(domain)) {
+      // Business account - use Office 365
+      return "https://outlook.office.com/mail";
+    }
+  }
+  // Personal account - use Outlook Live
   return "https://outlook.live.com/mail/0";
 }
 
@@ -17,11 +35,20 @@ const PROVIDER_CONFIG: Record<
   }
 > = {
   microsoft: {
-    buildUrl: (messageOrThreadId: string, _emailAddress?: string | null) => {
-      // Outlook URL format: https://outlook.live.com/mail/0/inbox/id/ENCODED_MESSAGE_ID
-      // The message ID needs to be URL-encoded for Outlook
+    buildUrl: (messageOrThreadId: string, emailAddress?: string | null) => {
+      // Outlook URL format varies by account type:
+      // Personal: https://outlook.live.com/mail/0/inbox/id/ENCODED_MESSAGE_ID
+      // Business: https://outlook.office.com/mail/id/ENCODED_MESSAGE_ID
       const encodedMessageId = encodeURIComponent(messageOrThreadId);
-      return `${getOutlookBaseUrl()}/inbox/id/${encodedMessageId}`;
+      const baseUrl = getOutlookBaseUrl(emailAddress);
+
+      // Business accounts use a different path format
+      if (baseUrl.includes("office.com")) {
+        return `${baseUrl}/id/${encodedMessageId}`;
+      }
+
+      // Personal accounts
+      return `${baseUrl}/inbox/id/${encodedMessageId}`;
     },
     selectId: (_messageId: string, threadId: string) => threadId,
   },

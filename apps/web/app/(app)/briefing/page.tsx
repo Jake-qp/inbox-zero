@@ -84,6 +84,7 @@ function BriefingContent({
         ...email,
         accountEmail: account.account.email,
         accountId: account.account.id,
+        accountProvider: account.account.provider,
       })),
   );
 
@@ -98,7 +99,7 @@ function BriefingContent({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <BriefingHeader
         totalScanned={data.totalScanned}
         totalShown={data.totalShown}
@@ -115,17 +116,19 @@ function BriefingContent({
 
       {urgentEmails.length > 0 && <UrgentSection emails={urgentEmails} />}
 
-      {data.accounts.map((account) => (
-        <AccountSection
-          key={account.account.id}
-          account={account.account}
-          emails={account.emails}
-          badge={account.badge}
-          hasError={account.hasError}
-          errorType={account.errorType}
-          atLimit={account.atLimit}
-        />
-      ))}
+      <div className="space-y-3">
+        {data.accounts.map((account) => (
+          <AccountSection
+            key={account.account.id}
+            account={account.account}
+            emails={account.emails}
+            badge={account.badge}
+            hasError={account.hasError}
+            errorType={account.errorType}
+            atLimit={account.atLimit}
+          />
+        ))}
+      </div>
 
       {data.totalShown === 0 && (
         <EmptyState message="All clear! No important emails today." />
