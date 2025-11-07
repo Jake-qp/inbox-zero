@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { updateBriefingGuidanceAction } from "@/utils/actions/email-account";
 import { toastSuccess, toastError } from "@/components/Toast";
-import { DEFAULT_BRIEFING_GUIDANCE } from "@/utils/ai/briefing/score-importance";
+import { DEFAULT_BRIEFING_GUIDANCE } from "@/utils/ai/briefing/constants";
 import { useAction } from "next-safe-action/hooks";
 import { PageWrapper } from "@/components/PageWrapper";
 import { PageHeader } from "@/components/PageHeader";

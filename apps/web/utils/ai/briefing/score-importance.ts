@@ -3,18 +3,7 @@ import type { EmailAccountWithAI } from "@/utils/llms/types";
 import { createGenerateText } from "@/utils/llms";
 import { getModel } from "@/utils/llms/model";
 import { createScopedLogger } from "@/utils/logger";
-
-export const DEFAULT_BRIEFING_GUIDANCE = `
-Important emails are:
-- From people I know personally (not companies)
-- Direct questions or requests to me
-- Meeting invites needing a response
-- Messages in active conversations
-- Time-sensitive (mentions today, urgent, deadline)
-
-Not important:
-- Newsletters, receipts, automated, marketing, social
-`.trim();
+import { DEFAULT_BRIEFING_GUIDANCE } from "./constants";
 
 export async function scoreEmailsBatch(
   emails: ParsedMessage[],
