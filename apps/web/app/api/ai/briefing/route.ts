@@ -44,9 +44,11 @@ async function generateBriefing(
     where: { userId },
     select: {
       id: true,
+      userId: true,
       email: true,
       briefingGuidance: true,
       about: true,
+      multiRuleSelectionEnabled: true,
       name: true,
       image: true,
       user: {
