@@ -36,21 +36,22 @@ const PROVIDER_CONFIG: Record<
 > = {
   microsoft: {
     buildUrl: (messageOrThreadId: string, emailAddress?: string | null) => {
-      // Outlook URL format varies by account type:
-      // Personal: https://outlook.live.com/mail/0/inbox/id/ENCODED_MESSAGE_ID
-      // Business: https://outlook.office.com/mail/id/ENCODED_MESSAGE_ID
-      const encodedMessageId = encodeURIComponent(messageOrThreadId);
       const baseUrl = getOutlookBaseUrl(emailAddress);
 
-      // Business accounts use a different path format
+      // Business accounts use deep link format
+      // Format: https://outlook.office.com/mail/deeplink/read/<MessageID>
       if (baseUrl.includes("office.com")) {
-        return `${baseUrl}/id/${encodedMessageId}`;
+        const encodedMessageId = encodeURIComponent(messageOrThreadId);
+        return `${baseUrl}/deeplink/read/${encodedMessageId}`;
       }
 
-      // Personal accounts
+      // Personal accounts use path-based format
+      // Format: https://outlook.live.com/mail/0/inbox/id/ENCODED_MESSAGE_ID
+      const encodedMessageId = encodeURIComponent(messageOrThreadId);
       return `${baseUrl}/inbox/id/${encodedMessageId}`;
     },
-    selectId: (_messageId: string, threadId: string) => threadId,
+    // For Outlook, use messageId (not threadId) for deep links to open specific emails
+    selectId: (messageId: string, _threadId: string) => messageId,
   },
   google: {
     buildUrl: (messageOrThreadId: string, emailAddress?: string | null) =>

@@ -10,6 +10,7 @@ import { BriefingHeader } from "@/components/briefing/BriefingHeader";
 import { UrgentSection } from "@/components/briefing/UrgentSection";
 import { AccountSection } from "@/components/briefing/AccountSection";
 import { EmptyState } from "@/components/briefing/EmptyState";
+import { BriefingLoading } from "@/components/briefing/BriefingLoading";
 
 export default function BriefingPage(props: {
   searchParams: Promise<{ date?: string }>;
@@ -17,7 +18,7 @@ export default function BriefingPage(props: {
   const params = use(props.searchParams);
   const currentDate = params.date || new Date().toISOString().split("T")[0];
 
-  const { data, error, isLoading } = useBriefing(params.date);
+  const { data, error, isLoading, refresh } = useBriefing(params.date);
 
   // Handle API errors
   const apiError = error as
@@ -46,12 +47,18 @@ export default function BriefingPage(props: {
 
   return (
     <PageWrapper>
-      <LoadingContent loading={isLoading} error={error}>
+      <LoadingContent
+        loading={isLoading}
+        error={error}
+        loadingComponent={<BriefingLoading />}
+      >
         {data ? (
           <BriefingContent
             data={data}
             currentDate={currentDate}
             params={params}
+            refresh={refresh}
+            isRefreshing={isLoading}
           />
         ) : (
           <EmptyState message="No briefing data available." />
@@ -65,10 +72,14 @@ function BriefingContent({
   data,
   currentDate,
   params,
+  refresh,
+  isRefreshing,
 }: {
   data: BriefingResponse;
   currentDate: string;
   params: { date?: string };
+  refresh: () => void;
+  isRefreshing: boolean;
 }) {
   // Calculate mode: inbox if no date param, history if date param exists
   const mode =
@@ -105,6 +116,8 @@ function BriefingContent({
         totalShown={data.totalShown}
         currentDate={currentDate}
         mode={mode}
+        refresh={refresh}
+        isRefreshing={isRefreshing}
       />
 
       {showUrgentWarning && (

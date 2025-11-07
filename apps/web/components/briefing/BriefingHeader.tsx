@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { PageHeading } from "@/components/Typography";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -11,11 +11,15 @@ export function BriefingHeader({
   totalShown,
   currentDate,
   mode,
+  refresh,
+  isRefreshing = false,
 }: {
   totalScanned?: number;
   totalShown?: number;
   currentDate: string;
   mode: "inbox" | "history";
+  refresh?: () => void;
+  isRefreshing?: boolean;
 }) {
   const router = useRouter();
   const today = new Date().toISOString().split("T")[0];
@@ -93,6 +97,22 @@ export function BriefingHeader({
             )}
           </p>
         </div>
+
+        {refresh && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refresh}
+            disabled={isRefreshing}
+            className="gap-2 mr-2"
+            aria-label="Refresh briefing"
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </Button>
+        )}
 
         {mode === "history" && (
           <div className="flex items-center gap-1 bg-violet-50 dark:bg-violet-950/30 rounded-xl p-1 border border-violet-200 dark:border-violet-800">

@@ -183,7 +183,7 @@ export function EmailCard({
               side="left"
               className="bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 border-0 shadow-lg"
             >
-              <p className="text-xs">Archive email</p>
+              <p className="text-xs">Archive in email system</p>
             </TooltipContent>
           </Tooltip>
           <Tooltip>
