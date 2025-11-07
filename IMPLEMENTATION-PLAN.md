@@ -274,7 +274,7 @@ Return format (one line per email, no explanation):
 
 ## Phase 2: Main UI
 
-### Task 2.1: SWR Hook [ ]
+### Task 2.1: SWR Hook [DONE]
 
 **Create:** `apps/web/hooks/useBriefing.ts`
 
@@ -295,6 +295,14 @@ export function useBriefing(date?: string) {
 **Reference:** `apps/web/hooks/useThreads.ts`
 
 **Update plan:** Mark DONE
+
+**Notes for next task:**
+- File created: `apps/web/hooks/useBriefing.ts`
+- Hook accepts optional `date?: string` parameter (YYYY-MM-DD format)
+- Returns SWR hook with `BriefingResponse` type from API route
+- URL includes date query param when provided, otherwise uses base `/api/ai/briefing`
+- SWR config: `revalidateOnFocus: false` (prevents refetch on window focus), `dedupingInterval: 60000` (1min cache)
+- Hook ready to use in page component - returns `{ data, error, isLoading }` from SWR
 
 ---
 
