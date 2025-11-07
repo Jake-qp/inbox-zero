@@ -189,7 +189,7 @@ Return format (one line per email, no explanation):
 
 ---
 
-### Task 1.3: API Route with Snapshots [ ]
+### Task 1.3: API Route with Snapshots [DONE]
 
 **Create:** `apps/web/app/api/ai/briefing/route.ts`
 
@@ -237,6 +237,16 @@ Return format (one line per email, no explanation):
 **Reference:** `apps/web/app/api/user/email-accounts/route.ts`
 
 **Update plan:** Mark DONE
+
+**Notes for next task:**
+- File created: `apps/web/app/api/ai/briefing/route.ts`
+- API route uses `withAuth` middleware (not `withEmailAccount`) - accesses `request.auth.userId`
+- BriefingResponse type exported for use in frontend hooks and components
+- Route handles date validation, snapshot caching, and multi-account email fetching/scoring
+- Accounts processed in parallel with `Promise.allSettled` - errors handled per account with `hasError` flag
+- Snapshot logic: past days always cached, today cached if <1hr old, otherwise regenerates
+- Date range uses both `after` and `before` parameters for bounded queries
+- UTC normalization prevents timezone issues by forcing UTC midnight/end-of-day
 
 ---
 
