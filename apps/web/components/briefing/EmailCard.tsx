@@ -63,8 +63,8 @@ export function EmailCard({
   };
 
   return (
-    <Card className="p-4">
-      <div className="flex items-start justify-between gap-4">
+    <Card className="p-3 md:p-4">
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 md:gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2">
             <Badge variant={getScoreBadgeVariant(email.score)}>
@@ -87,12 +87,13 @@ export function EmailCard({
             </p>
           )}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-1 flex-shrink-0">
           <Button
             variant="ghost"
             size="sm"
             onClick={handleReply}
             aria-label="Reply"
+            className="h-8 w-8 md:h-9 md:w-9 p-0"
           >
             <Reply className="h-4 w-4" />
           </Button>
@@ -102,6 +103,7 @@ export function EmailCard({
             onClick={handleArchive}
             disabled={isArchiving}
             aria-label="Archive"
+            className="h-8 w-8 md:h-9 md:w-9 p-0"
           >
             <Archive className="h-4 w-4" />
           </Button>
@@ -110,6 +112,7 @@ export function EmailCard({
             size="sm"
             onClick={handleView}
             aria-label="View"
+            className="h-8 w-8 md:h-9 md:w-9 p-0"
           >
             <Eye className="h-4 w-4" />
           </Button>

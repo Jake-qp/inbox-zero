@@ -12,6 +12,7 @@ import {
   isGoogleProvider,
   isMicrosoftProvider,
 } from "@/utils/email/provider-types";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 function getProviderIcon(provider: string) {
   // Simple icon display - can be enhanced with brand-specific icons later
@@ -44,15 +45,18 @@ export function AccountSection({
   };
   hasError?: boolean;
 }) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const isMobile = useIsMobile();
+  const [isCollapsed, setIsCollapsed] = useState(isMobile);
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+      <CardHeader className="p-4 md:p-6">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             {getProviderIcon(account.provider)}
-            <CardTitle className="text-base">{account.email}</CardTitle>
+            <CardTitle className="text-base truncate">
+              {account.email}
+            </CardTitle>
             {badge.count > 0 && (
               <Badge variant={badge.hasUrgent ? "destructive" : "default"}>
                 {badge.count}
@@ -64,6 +68,7 @@ export function AccountSection({
             size="sm"
             onClick={() => setIsCollapsed(!isCollapsed)}
             aria-label={isCollapsed ? "Expand" : "Collapse"}
+            className="flex-shrink-0"
           >
             {isCollapsed ? (
               <ChevronDown className="h-4 w-4" />
@@ -74,7 +79,7 @@ export function AccountSection({
         </div>
       </CardHeader>
       {!isCollapsed && (
-        <CardContent className="space-y-2">
+        <CardContent className="space-y-2 p-4 md:p-6 pt-0">
           {hasError && (
             <AlertError
               title="Failed to load"

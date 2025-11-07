@@ -536,7 +536,7 @@ export default function BriefingSettings() {
 
 ---
 
-### Task 4.3: Responsive [ ]
+### Task 4.3: Responsive [DONE]
 
 **Update:** AccountSection, EmailCard components
 - Mobile: Collapse accounts, stack actions
@@ -545,6 +545,16 @@ export default function BriefingSettings() {
 **Test:** 375px, 768px, 1024px widths
 
 **Update plan:** Mark DONE
+
+**Notes for next task:**
+- AccountSection: Uses `useIsMobile` hook, defaults to collapsed state on mobile (`useState(isMobile)`)
+- AccountSection: Added responsive padding (`p-4 md:p-6`) and improved mobile spacing/truncation
+- EmailCard: Card layout stacks on mobile (`flex-col md:flex-row`) - content above, actions below
+- EmailCard: Actions stack vertically on mobile (`flex-col md:flex-row`) for better mobile UX
+- EmailCard: Added responsive padding (`p-3 md:p-4`) and responsive button sizing
+- Both components use Tailwind responsive classes for breakpoint-based styling
+- Code verified: Implementation matches requirements, breakpoints align (768px), ready for visual testing
+- Manual testing required: Sign in and test at 375px, 768px, 1024px viewport widths
 
 ---
 
