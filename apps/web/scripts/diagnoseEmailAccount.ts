@@ -148,7 +148,6 @@ async function diagnoseEmailAccount(email: string) {
       console.log("\n   Enabled Rules:");
       enabledRules.forEach((rule) => {
         console.log(`   • ${rule.name}`);
-        console.log(`     Type: ${rule.type}`);
         console.log(`     Actions: ${rule.actions.length}`);
         rule.actions.forEach((action) => {
           console.log(`       - ${action.type}`);
@@ -165,7 +164,6 @@ async function diagnoseEmailAccount(email: string) {
     where: { emailAccountId: emailAccount.id },
     select: {
       email: true,
-      name: true,
       categoryId: true,
       status: true,
     },
@@ -180,7 +178,7 @@ async function diagnoseEmailAccount(email: string) {
   if (categorizedSenders.length > 0) {
     console.log("\n   Recent categorized senders (showing first 10):");
     categorizedSenders.slice(0, 10).forEach((sender) => {
-      console.log(`   • ${sender.email} (${sender.name || "No name"})`);
+      console.log(`   • ${sender.email}`);
     });
   }
 
@@ -206,7 +204,9 @@ async function diagnoseEmailAccount(email: string) {
       `✅ Found ${executedRules.length} recent executions (showing last 5):`,
     );
     executedRules.forEach((exec) => {
-      console.log(`   • ${exec.createdAt.toISOString()}: ${exec.rule.name}`);
+      console.log(
+        `   • ${exec.createdAt.toISOString()}: ${exec.rule?.name || "Unknown rule"}`,
+      );
       console.log(`     Reason: ${exec.reason || "No reason"}`);
     });
   }
