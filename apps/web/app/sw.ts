@@ -16,7 +16,11 @@ const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   skipWaiting: true,
   clientsClaim: true,
-  navigationPreload: true,
+  // Daily Briefing - Disabled to prevent OAuth double-redemption (AADSTS54005)
+  // Upstream has this enabled but doesn't handle event.preloadResponse properly
+  // See: https://web.dev/navigation-preload/ and IMPLEMENTATION-PLAN.md Phase 8
+  // TODO: Re-enable once Serwist fetch handler uses event.preloadResponse
+  navigationPreload: false,
   runtimeCaching: [], // caching disabled
   disableDevLogs: process.env.NODE_ENV === "production",
 });

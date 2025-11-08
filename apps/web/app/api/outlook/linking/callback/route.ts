@@ -8,6 +8,7 @@ import { SafeError } from "@/utils/error";
 import { transferPremiumDuringMerge } from "@/utils/user/merge-premium";
 import { parseOAuthState } from "@/utils/oauth/state";
 import { saveTokens } from "@/utils/auth";
+import { redis } from "@/utils/redis";
 
 const logger = createScopedLogger("outlook/linking/callback");
 
@@ -52,6 +53,24 @@ export const GET = withError(async (request) => {
   if (!code) {
     logger.warn("Missing code in Outlook linking callback");
     redirectUrl.searchParams.set("error", "missing_code");
+    return NextResponse.redirect(redirectUrl, { headers: response.headers });
+  }
+
+  // Daily Briefing - Idempotency guard to prevent OAuth code double-redemption
+  // Protects against service worker navigationPreload double-requests (AADSTS54005)
+  // Pattern matches existing utils/redis/message-processing.ts
+  const oauthLockKey = `oauth-callback:outlook:${decodedState.nonce}`;
+  const isFirstRequest = await redis.set(oauthLockKey, "processing", {
+    ex: 60, // OAuth codes expire quickly
+    nx: true, // Only set if doesn't exist
+  });
+
+  if (isFirstRequest !== "OK") {
+    logger.warn("Duplicate OAuth callback detected - already processing", {
+      nonce: decodedState.nonce,
+    });
+    redirectUrl.searchParams.set("error", "duplicate_request");
+    response.cookies.delete(OUTLOOK_LINKING_STATE_COOKIE_NAME);
     return NextResponse.redirect(redirectUrl, { headers: response.headers });
   }
 

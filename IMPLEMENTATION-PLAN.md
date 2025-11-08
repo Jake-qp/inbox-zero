@@ -291,7 +291,41 @@
 
 ---
 
+## Phase 8: OAuth Double-Redemption Fix [DONE]
+
+### 8.1 Problem Discovery
+- **Issue:** Microsoft OAuth returns `AADSTS54005: OAuth2 Authorization code was already redeemed`
+- **Root Cause:** Service worker `navigationPreload: true` causes browser to issue preload request during SW boot
+- **Impact:** Affects ALL OAuth providers (Google, Microsoft), both upstream and fork
+- **Reference:** https://web.dev/navigation-preload/ (see warning about using `event.preloadResponse`)
+
+### 8.2 Solution (Two-Layer Defense)
+**Primary:** Redis idempotency guard in OAuth callbacks  
+- **File:** `apps/web/app/api/outlook/linking/callback/route.ts`  
+- **Pattern:** Redis SET NX matching `utils/redis/message-processing.ts`  
+- **Protection:** Works across instances, survives restarts, handles ANY duplicate source  
+- **TTL:** 60 seconds (matches OAuth code lifetime)
+
+**Secondary:** Disabled `navigationPreload` in service worker  
+- **File:** `apps/web/app/sw.ts`  
+- **Tradeoff:** Loses marginal perf benefit (but `runtimeCaching: []` anyway)  
+- **Note:** Upstream has same bug - this fix is contribution-ready  
+
+### 8.3 Upstream Merge Safety
+- Idempotency guard is ADDITIVE (won't conflict)
+- SW config change clearly marked and documented
+- If upstream fixes differently, Layer 1 still protects
+- All changes marked with `// Daily Briefing -` comments
+
+### 8.4 Files Modified
+- `apps/web/app/api/outlook/linking/callback/route.ts` - Added Redis idempotency guard
+- `apps/web/app/sw.ts` - Disabled navigationPreload with explanatory comments
+- `IMPLEMENTATION-PLAN.md` - This section
+
+---
+
 ## Updated Status
 
-🔧 **PHASE 7 IN PROGRESS** - Inbox-First pivot implementation
+🔧 **PHASE 7 IN PROGRESS** - Inbox-First pivot implementation  
+✅ **PHASE 8 COMPLETE** - OAuth double-redemption fix
 
