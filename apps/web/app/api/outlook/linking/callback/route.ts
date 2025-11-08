@@ -7,7 +7,7 @@ import { withError } from "@/utils/middleware";
 import { SafeError } from "@/utils/error";
 import { transferPremiumDuringMerge } from "@/utils/user/merge-premium";
 import { parseOAuthState } from "@/utils/oauth/state";
-import { saveTokens } from "@/utils/auth";
+import { saveTokens, auth } from "@/utils/auth";
 import { redis } from "@/utils/redis";
 
 const logger = createScopedLogger("outlook/linking/callback");
@@ -106,6 +106,29 @@ export const GET = withError(async (request) => {
   response.cookies.delete(OUTLOOK_LINKING_STATE_COOKIE_NAME);
 
   const { userId: targetUserId, action } = decodedState;
+
+  // Verify authenticated user matches targetUserId from state
+  const session = await auth();
+  const authenticatedUserId = session?.user?.id;
+  if (!authenticatedUserId) {
+    logger.warn("No authenticated user in Outlook linking callback");
+    redirectUrl.searchParams.set("error", "unauthorized");
+    return NextResponse.redirect(redirectUrl, { headers: response.headers });
+  }
+
+  if (authenticatedUserId !== targetUserId) {
+    logger.error("User mismatch in Outlook linking callback", {
+      authenticatedUserId,
+      targetUserId,
+      action,
+    });
+    redirectUrl.searchParams.set("error", "user_mismatch");
+    redirectUrl.searchParams.set(
+      "error_description",
+      "Session expired. Please try again.",
+    );
+    return NextResponse.redirect(redirectUrl, { headers: response.headers });
+  }
 
   if (!code) {
     logger.warn("Missing code in Outlook linking callback");
@@ -334,29 +357,7 @@ export const GET = withError(async (request) => {
           expiresAt = new Date(Date.now() + expiresInSeconds * 1000);
         }
 
-        const newAccount = await prisma.account.create({
-          data: {
-            userId: targetUserId,
-            type: "oidc",
-            provider: "microsoft",
-            providerAccountId,
-            access_token: tokens.access_token,
-            refresh_token: tokens.refresh_token,
-            expires_at: expiresAt,
-            scope: tokens.scope,
-            token_type: tokens.token_type,
-          },
-        });
-
-        // Daily Briefing - Save success result IMMEDIATELY after account creation
-        // (before slow operations like profile picture fetch)
-        // This ensures duplicate requests get result even if slow operations fail
-        await redis.set(
-          oauthResultKey,
-          JSON.stringify({ success: "account_created_and_linked" }),
-          { ex: 3600 },
-        );
-
+        // Fetch profile picture before creating account (optional, non-blocking)
         let profileImage = null;
         try {
           const photoResponse = await fetch(
@@ -377,24 +378,55 @@ export const GET = withError(async (request) => {
           logger.warn("Failed to fetch profile picture", { error });
         }
 
-        await prisma.emailAccount.create({
-          data: {
-            email: providerEmail,
-            userId: targetUserId,
-            accountId: newAccount.id,
-            name:
-              profile.displayName ||
-              profile.givenName ||
-              profile.surname ||
-              providerEmail,
-            image: profileImage,
+        // Wrap Account + EmailAccount creation in transaction
+        // This ensures both are created atomically or both fail
+        const { newAccount, newEmailAccount } = await prisma.$transaction(
+          async (tx) => {
+            const account = await tx.account.create({
+              data: {
+                userId: targetUserId,
+                type: "oidc",
+                provider: "microsoft",
+                providerAccountId,
+                access_token: tokens.access_token,
+                refresh_token: tokens.refresh_token,
+                expires_at: expiresAt,
+                scope: tokens.scope,
+                token_type: tokens.token_type,
+              },
+            });
+
+            const emailAccount = await tx.emailAccount.create({
+              data: {
+                email: providerEmail,
+                userId: targetUserId,
+                accountId: account.id,
+                name:
+                  profile.displayName ||
+                  profile.givenName ||
+                  profile.surname ||
+                  providerEmail,
+                image: profileImage,
+              },
+            });
+
+            return { newAccount: account, newEmailAccount: emailAccount };
           },
-        });
+        );
+
+        // Daily Briefing - Save success result AFTER both Account and EmailAccount are created
+        // This ensures duplicate requests get result only if both records exist
+        await redis.set(
+          oauthResultKey,
+          JSON.stringify({ success: "account_created_and_linked" }),
+          { ex: 3600 },
+        );
 
         logger.info("Successfully created and linked new Microsoft account", {
           email: providerEmail,
           targetUserId,
           accountId: newAccount.id,
+          emailAccountId: newEmailAccount.id,
         });
 
         // Delete lock after successful completion

@@ -64,6 +64,10 @@ export default function AccountsPage() {
           "Authentication code was already used. Please try adding the account again.";
       } else if (error === "user_cancelled") {
         errorMessage = "Authentication cancelled";
+      } else if (error === "user_mismatch") {
+        errorMessage =
+          errorDescription ||
+          "Session expired. Please try adding the account again.";
       } else if (error === "link_failed") {
         errorMessage =
           errorDescription?.includes("AADSTS54005") ||
