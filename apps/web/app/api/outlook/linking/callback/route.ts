@@ -105,8 +105,8 @@ export const GET = withError(async (request) => {
       },
     );
 
-    // Poll for result for up to 10 seconds
-    for (let i = 0; i < 20; i++) {
+    // Poll for result for up to 30 seconds (increased from 10s to handle slow DB operations)
+    for (let i = 0; i < 60; i++) {
       await new Promise((resolve) => setTimeout(resolve, 500));
       const result = await redis.get(oauthResultKey);
       if (result) {
@@ -183,17 +183,33 @@ export const GET = withError(async (request) => {
       throw new Error("Profile missing required email");
     }
 
-    const existingAccount = await prisma.account.findFirst({
+    const providerAccountId = profile.id || providerEmail;
+
+    // Fix: Check account by providerAccountId first (matches Google callback pattern)
+    // This correctly identifies if the Microsoft account already exists in the system
+    const existingAccount = await prisma.account.findUnique({
       where: {
-        provider: "microsoft",
-        user: {
-          email: providerEmail.trim().toLowerCase(),
+        provider_providerAccountId: {
+          provider: "microsoft",
+          providerAccountId,
         },
       },
       select: {
         id: true,
         userId: true,
         user: { select: { name: true, email: true } },
+      },
+    });
+
+    // Check if current user already has this email account (prevent duplicates)
+    const existingEmailAccount = await prisma.emailAccount.findFirst({
+      where: {
+        userId: targetUserId,
+        email: providerEmail.trim().toLowerCase(),
+      },
+      select: {
+        id: true,
+        accountId: true,
       },
     });
 
@@ -210,12 +226,38 @@ export const GET = withError(async (request) => {
           JSON.stringify({ error: "account_not_found_for_merge" }),
           { ex: 3600 },
         );
+        await redis.del(lockKey);
 
         redirectUrl.searchParams.set("error", "account_not_found_for_merge");
         return NextResponse.redirect(redirectUrl, {
           headers: response.headers,
         });
       } else {
+        // Prevent duplicate account creation - check if current user already has this email
+        if (existingEmailAccount) {
+          logger.info(
+            "Account already exists for current user - returning success (idempotent)",
+            {
+              email: providerEmail,
+              targetUserId,
+              emailAccountId: existingEmailAccount.id,
+            },
+          );
+
+          // Daily Briefing - Cache success result for idempotency
+          await redis.set(
+            oauthResultKey,
+            JSON.stringify({ success: "account_created_and_linked" }),
+            { ex: 3600 },
+          );
+          await redis.del(lockKey);
+
+          redirectUrl.searchParams.set("success", "account_created_and_linked");
+          return NextResponse.redirect(redirectUrl, {
+            headers: response.headers,
+          });
+        }
+
         logger.info(
           "Creating new Microsoft account and linking to current user",
           {
@@ -240,7 +282,7 @@ export const GET = withError(async (request) => {
             userId: targetUserId,
             type: "oidc",
             provider: "microsoft",
-            providerAccountId: profile.id || providerEmail,
+            providerAccountId,
             access_token: tokens.access_token,
             refresh_token: tokens.refresh_token,
             expires_at: expiresAt,
@@ -248,6 +290,15 @@ export const GET = withError(async (request) => {
             token_type: tokens.token_type,
           },
         });
+
+        // Daily Briefing - Save success result IMMEDIATELY after account creation
+        // (before slow operations like profile picture fetch)
+        // This ensures duplicate requests get result even if slow operations fail
+        await redis.set(
+          oauthResultKey,
+          JSON.stringify({ success: "account_created_and_linked" }),
+          { ex: 3600 },
+        );
 
         let profileImage = null;
         try {
@@ -289,12 +340,8 @@ export const GET = withError(async (request) => {
           accountId: newAccount.id,
         });
 
-        // Daily Briefing - Cache success result for idempotency
-        await redis.set(
-          oauthResultKey,
-          JSON.stringify({ success: "account_created_and_linked" }),
-          { ex: 3600 }, // Cache for 1 hour
-        );
+        // Delete lock after successful completion
+        await redis.del(lockKey);
 
         redirectUrl.searchParams.set("success", "account_created_and_linked");
         return NextResponse.redirect(redirectUrl, {
@@ -315,6 +362,7 @@ export const GET = withError(async (request) => {
         JSON.stringify({ error: "already_linked_to_self" }),
         { ex: 3600 },
       );
+      await redis.del(lockKey);
 
       redirectUrl.searchParams.set("error", "already_linked_to_self");
       return NextResponse.redirect(redirectUrl, {
@@ -400,6 +448,7 @@ export const GET = withError(async (request) => {
       JSON.stringify({ success: "account_merged" }),
       { ex: 3600 },
     );
+    await redis.del(lockKey);
 
     redirectUrl.searchParams.set("success", "account_merged");
     return NextResponse.redirect(redirectUrl, {
@@ -425,6 +474,10 @@ export const GET = withError(async (request) => {
       }),
       { ex: 3600 },
     );
+    // Delete lock on error to allow retry
+    await redis.del(lockKey).catch(() => {
+      // Ignore if lock doesn't exist
+    });
 
     redirectUrl.searchParams.set("error", errorCode);
     redirectUrl.searchParams.set(
