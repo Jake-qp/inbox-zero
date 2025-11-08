@@ -37,19 +37,14 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { emailAccountId } = useAccount();
-  
-  // Daily Briefing - Custom addition: Prevent chat hooks from executing without valid account
-  if (!emailAccountId) {
-    return <>{children}</>;
-  }
-  
   const { mutate } = useSWRConfig();
 
   const [input, setInput] = useState<string>("");
   const [chatId, setChatId] = useQueryState("chatId", parseAsString);
   const [context, setContext] = useState<MessageContext | null>(null);
 
-  const { data } = useChatMessages(chatId);
+  // Daily Briefing - Custom addition: Skip chat message fetch without valid account
+  const { data } = useChatMessages(emailAccountId ? chatId : null);
 
   const setNewChat = useCallback(() => {
     setChatId(generateUUID());
@@ -60,7 +55,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     transport: new DefaultChatTransport({
       api: "/api/chat",
       headers: {
-        [EMAIL_ACCOUNT_HEADER]: emailAccountId,
+        [EMAIL_ACCOUNT_HEADER]: emailAccountId || "",
       },
       prepareSendMessagesRequest({ messages, id, body }) {
         return {
