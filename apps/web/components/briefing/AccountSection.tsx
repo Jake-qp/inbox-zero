@@ -84,11 +84,16 @@ export function AccountSection({
         provider: "google",
         callbackURL: "/briefing",
         scopes: GMAIL_SCOPES,
+        // Force consent to refresh tokens for existing account
+        // This ensures we refresh the current account's tokens rather than creating/merging accounts
+        consent: true,
       });
     } else if (isMicrosoft) {
       await signIn.social({
         provider: "microsoft",
         callbackURL: "/briefing",
+        // Force consent to refresh tokens for existing account
+        consent: true,
       });
     }
   };
