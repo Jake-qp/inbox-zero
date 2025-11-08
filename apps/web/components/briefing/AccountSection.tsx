@@ -142,7 +142,7 @@ export function AccountSection({
         <CardContent className="space-y-2 p-4">
           {hasError && errorType === "AUTH_REQUIRED" && (
             <Alert
-              variant="warning"
+              variant="destructive"
               className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 py-3"
             >
               <AlertDescription className="flex items-center justify-between gap-2 flex-wrap text-sm">
@@ -179,7 +179,7 @@ export function AccountSection({
           )}
           {atLimit && !hasError && (
             <Alert
-              variant="warning"
+              variant="destructive"
               className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 py-3"
             >
               <AlertDescription className="text-sm text-amber-800 dark:text-amber-200">

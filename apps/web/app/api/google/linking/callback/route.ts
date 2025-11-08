@@ -144,8 +144,8 @@ export const GET = withError(async (request) => {
     // Save fresh OAuth tokens before updating relationships
     await saveTokens({
       tokens: {
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
+        access_token: tokens.access_token ?? undefined,
+        refresh_token: tokens.refresh_token ?? undefined,
         expires_at: tokens.expiry_date
           ? Math.floor(tokens.expiry_date / 1000)
           : undefined,

@@ -293,12 +293,14 @@ export const GET = withAuth(async (request) => {
     if (snapshot) {
       if (!isToday) {
         // Past day: always return cached
-        return NextResponse.json(snapshot.data as BriefingResponse);
+        return NextResponse.json(snapshot.data as unknown as BriefingResponse);
       } else {
         // Today: return cached if < 1hr old
         const oneHourAgo = Date.now() - 3_600_000;
         if (snapshot.updatedAt.getTime() > oneHourAgo) {
-          return NextResponse.json(snapshot.data as BriefingResponse);
+          return NextResponse.json(
+            snapshot.data as unknown as BriefingResponse,
+          );
         }
       }
     }
@@ -317,10 +319,10 @@ export const GET = withAuth(async (request) => {
       create: {
         userId,
         date: startOfDay,
-        data: briefingResponse,
+        data: briefingResponse as any,
       },
       update: {
-        data: briefingResponse,
+        data: briefingResponse as any,
         updatedAt: new Date(),
       },
     });

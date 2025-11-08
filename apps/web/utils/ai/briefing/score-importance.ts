@@ -59,8 +59,8 @@ Return format (one line per email, no explanation):
 
     try {
       const { text } = await generateText({
+        ...modelOptions,
         prompt,
-        maxTokens: 200,
         temperature: 0.3,
       });
 
