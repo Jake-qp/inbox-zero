@@ -31,6 +31,7 @@ export default function AccountsPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const success = params.get("success");
+    const error = params.get("error");
 
     if (
       success === "account_merged" ||
@@ -49,6 +50,31 @@ export default function AccountsPage() {
 
       toastSuccess({
         description: "Account connected! Your briefing will update shortly.",
+      });
+
+      // Clean URL
+      window.history.replaceState({}, "", "/accounts");
+    } else if (error) {
+      // Handle OAuth errors
+      let errorMessage = "Failed to link account. Please try again.";
+      const errorDescription = params.get("error_description");
+
+      if (error === "oauth_code_already_redeemed") {
+        errorMessage =
+          "Authentication code was already used. Please try adding the account again.";
+      } else if (error === "user_cancelled") {
+        errorMessage = "Authentication cancelled";
+      } else if (error === "link_failed") {
+        errorMessage =
+          errorDescription?.includes("AADSTS54005") ||
+          errorDescription?.includes("already redeemed")
+            ? "Authentication code was already used. Please try adding the account again."
+            : "Failed to link account. Please try again.";
+      }
+
+      toastError({
+        title: "Account linking failed",
+        description: errorMessage,
       });
 
       // Clean URL

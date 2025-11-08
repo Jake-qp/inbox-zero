@@ -18,6 +18,8 @@ export const GET = withError(async (request) => {
 
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get("code");
+  const error = searchParams.get("error");
+  const errorDescription = searchParams.get("error_description");
   const receivedState = searchParams.get("state");
   const storedState = request.cookies.get(
     OUTLOOK_LINKING_STATE_COOKIE_NAME,
@@ -25,6 +27,61 @@ export const GET = withError(async (request) => {
 
   const redirectUrl = new URL("/accounts", request.nextUrl.origin);
   const response = NextResponse.redirect(redirectUrl);
+
+  // Check for Microsoft OAuth error FIRST (before state validation)
+  if (error) {
+    logger.warn("Microsoft OAuth error in callback", {
+      error,
+      errorDescription,
+      receivedState,
+    });
+
+    // Try to decode state to get nonce for Redis caching
+    let nonce: string | undefined;
+    if (storedState && receivedState && storedState === receivedState) {
+      try {
+        const decodedState = parseOAuthState(storedState);
+        nonce = decodedState.nonce;
+      } catch {
+        // Ignore if state decode fails
+      }
+    }
+
+    // Map Microsoft error codes to user-friendly error codes
+    let mappedError = "link_failed";
+    if (error === "access_denied") {
+      mappedError = "user_cancelled";
+    } else if (
+      errorDescription?.includes("AADSTS54005") ||
+      errorDescription?.includes("already redeemed")
+    ) {
+      mappedError = "oauth_code_already_redeemed";
+    }
+
+    // Cache error in Redis for idempotency if we have a nonce
+    if (nonce) {
+      const oauthResultKey = `oauth-result:outlook:${nonce}`;
+      await redis
+        .set(
+          oauthResultKey,
+          JSON.stringify({
+            error: mappedError,
+            error_description: errorDescription || error,
+          }),
+          { ex: 3600 },
+        )
+        .catch((redisError) => {
+          logger.warn("Failed to cache OAuth error in Redis", { redisError });
+        });
+    }
+
+    redirectUrl.searchParams.set("error", mappedError);
+    if (errorDescription) {
+      redirectUrl.searchParams.set("error_description", errorDescription);
+    }
+    response.cookies.delete(OUTLOOK_LINKING_STATE_COOKIE_NAME);
+    return NextResponse.redirect(redirectUrl, { headers: response.headers });
+  }
 
   if (!storedState || !receivedState || storedState !== receivedState) {
     logger.warn("Invalid state during Outlook linking callback", {
