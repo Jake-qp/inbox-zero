@@ -58,19 +58,83 @@ export const GET = withError(async (request) => {
 
   // Daily Briefing - Idempotency guard to prevent OAuth code double-redemption
   // Protects against service worker navigationPreload double-requests (AADSTS54005)
-  // Pattern matches existing utils/redis/message-processing.ts
-  const oauthLockKey = `oauth-callback:outlook:${decodedState.nonce}`;
-  const isFirstRequest = await redis.set(oauthLockKey, "processing", {
-    ex: 60, // OAuth codes expire quickly
-    nx: true, // Only set if doesn't exist
+  // Uses Redis to store the result of first request and replay it for duplicates
+  const oauthResultKey = `oauth-result:outlook:${decodedState.nonce}`;
+
+  // Check if this OAuth flow already completed
+  const existingResult = await redis.get(oauthResultKey);
+  if (existingResult) {
+    logger.info("Returning cached OAuth result for duplicate request", {
+      nonce: decodedState.nonce,
+      cachedResult: existingResult,
+    });
+
+    try {
+      const cached = JSON.parse(existingResult as string);
+      if (cached.success) {
+        redirectUrl.searchParams.set("success", cached.success);
+      } else if (cached.error) {
+        redirectUrl.searchParams.set("error", cached.error);
+        if (cached.error_description) {
+          redirectUrl.searchParams.set(
+            "error_description",
+            cached.error_description,
+          );
+        }
+      }
+      return NextResponse.redirect(redirectUrl, { headers: response.headers });
+    } catch (parseError) {
+      logger.error("Failed to parse cached OAuth result", { parseError });
+      // Continue with fresh attempt if cache is corrupted
+    }
+  }
+
+  // Mark as processing (prevents race condition between duplicate requests)
+  const lockKey = `oauth-lock:outlook:${decodedState.nonce}`;
+  const isFirstRequest = await redis.set(lockKey, "1", {
+    ex: 60,
+    nx: true,
   });
 
   if (isFirstRequest !== "OK") {
-    logger.warn("Duplicate OAuth callback detected - already processing", {
-      nonce: decodedState.nonce,
-    });
-    redirectUrl.searchParams.set("error", "duplicate_request");
-    response.cookies.delete(OUTLOOK_LINKING_STATE_COOKIE_NAME);
+    // Another request is processing - wait briefly and check for result
+    logger.info(
+      "Duplicate request detected - waiting for first request to complete",
+      {
+        nonce: decodedState.nonce,
+      },
+    );
+
+    // Poll for result for up to 10 seconds
+    for (let i = 0; i < 20; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const result = await redis.get(oauthResultKey);
+      if (result) {
+        try {
+          const cached = JSON.parse(result as string);
+          if (cached.success) {
+            redirectUrl.searchParams.set("success", cached.success);
+          } else if (cached.error) {
+            redirectUrl.searchParams.set("error", cached.error);
+            if (cached.error_description) {
+              redirectUrl.searchParams.set(
+                "error_description",
+                cached.error_description,
+              );
+            }
+          }
+          return NextResponse.redirect(redirectUrl, {
+            headers: response.headers,
+          });
+        } catch {
+          break;
+        }
+      }
+    }
+
+    // Timeout - return error
+    logger.warn("Timeout waiting for first OAuth request to complete");
+    redirectUrl.searchParams.set("error", "duplicate_request_timeout");
     return NextResponse.redirect(redirectUrl, { headers: response.headers });
   }
 
@@ -139,6 +203,14 @@ export const GET = withError(async (request) => {
           "Merge Failed: Microsoft account not found in the system. Cannot merge.",
           { email: providerEmail },
         );
+
+        // Daily Briefing - Cache error result for idempotency
+        await redis.set(
+          oauthResultKey,
+          JSON.stringify({ error: "account_not_found_for_merge" }),
+          { ex: 3600 },
+        );
+
         redirectUrl.searchParams.set("error", "account_not_found_for_merge");
         return NextResponse.redirect(redirectUrl, {
           headers: response.headers,
@@ -216,6 +288,14 @@ export const GET = withError(async (request) => {
           targetUserId,
           accountId: newAccount.id,
         });
+
+        // Daily Briefing - Cache success result for idempotency
+        await redis.set(
+          oauthResultKey,
+          JSON.stringify({ success: "account_created_and_linked" }),
+          { ex: 3600 }, // Cache for 1 hour
+        );
+
         redirectUrl.searchParams.set("success", "account_created_and_linked");
         return NextResponse.redirect(redirectUrl, {
           headers: response.headers,
@@ -228,6 +308,14 @@ export const GET = withError(async (request) => {
         "Microsoft account is already linked to the correct user. Merge action unnecessary.",
         { email: providerEmail, targetUserId },
       );
+
+      // Daily Briefing - Cache error result for idempotency
+      await redis.set(
+        oauthResultKey,
+        JSON.stringify({ error: "already_linked_to_self" }),
+        { ex: 3600 },
+      );
+
       redirectUrl.searchParams.set("error", "already_linked_to_self");
       return NextResponse.redirect(redirectUrl, {
         headers: response.headers,
@@ -305,6 +393,14 @@ export const GET = withError(async (request) => {
       targetUserId,
       sourceUserId: existingAccount.userId,
     });
+
+    // Daily Briefing - Cache success result for idempotency
+    await redis.set(
+      oauthResultKey,
+      JSON.stringify({ success: "account_merged" }),
+      { ex: 3600 },
+    );
+
     redirectUrl.searchParams.set("success", "account_merged");
     return NextResponse.redirect(redirectUrl, {
       headers: response.headers,
@@ -319,6 +415,17 @@ export const GET = withError(async (request) => {
     } else if (error.message?.includes("Profile missing required")) {
       errorCode = "incomplete_profile";
     }
+
+    // Daily Briefing - Cache error result for idempotency
+    await redis.set(
+      oauthResultKey,
+      JSON.stringify({
+        error: errorCode,
+        error_description: error.message || "Unknown error",
+      }),
+      { ex: 3600 },
+    );
+
     redirectUrl.searchParams.set("error", errorCode);
     redirectUrl.searchParams.set(
       "error_description",

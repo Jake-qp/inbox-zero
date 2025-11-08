@@ -300,11 +300,12 @@
 - **Reference:** https://web.dev/navigation-preload/ (see warning about using `event.preloadResponse`)
 
 ### 8.2 Solution (Two-Layer Defense)
-**Primary:** Redis idempotency guard in OAuth callbacks  
+**Primary:** Redis idempotent result caching in OAuth callbacks  
 - **File:** `apps/web/app/api/outlook/linking/callback/route.ts`  
-- **Pattern:** Redis SET NX matching `utils/redis/message-processing.ts`  
-- **Protection:** Works across instances, survives restarts, handles ANY duplicate source  
-- **TTL:** 60 seconds (matches OAuth code lifetime)
+- **Pattern:** Stores success/error result in Redis, replays for duplicate requests
+- **Keys:** `oauth-result:outlook:{nonce}` (result cache, 1hr) + `oauth-lock:outlook:{nonce}` (processing lock, 60s)
+- **Behavior:** Second request waits up to 10s for first to complete, then returns same result
+- **Protection:** Works across instances, survives restarts, handles ANY duplicate source
 
 **Secondary:** Disabled `navigationPreload` in service worker  
 - **File:** `apps/web/app/sw.ts`  
@@ -318,9 +319,16 @@
 - All changes marked with `// Daily Briefing -` comments
 
 ### 8.4 Files Modified
-- `apps/web/app/api/outlook/linking/callback/route.ts` - Added Redis idempotency guard
+- `apps/web/app/api/outlook/linking/callback/route.ts` - Added Redis idempotent result caching
 - `apps/web/app/sw.ts` - Disabled navigationPreload with explanatory comments
 - `IMPLEMENTATION-PLAN.md` - This section
+
+### 8.5 How It Works
+1. **First request:** Sets lock, processes OAuth, caches result (success/error) for 1 hour
+2. **Duplicate request:** Waits up to 10s for first to complete, then returns cached result
+3. **Race condition:** Lock prevents simultaneous processing, polling ensures duplicate gets same outcome
+4. **All exit paths cache:** account_created_and_linked, account_merged, already_linked_to_self, account_not_found_for_merge, link_failed, etc.
+5. **Idempotent:** Same nonce always returns same result, no matter how many times callback is hit
 
 ---
 

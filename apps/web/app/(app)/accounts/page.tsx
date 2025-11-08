@@ -32,7 +32,11 @@ export default function AccountsPage() {
     const params = new URLSearchParams(window.location.search);
     const success = params.get("success");
 
-    if (success === "account_merged" || success === "account_added" || success === "account_created_and_linked") {
+    if (
+      success === "account_merged" ||
+      success === "account_added" ||
+      success === "account_created_and_linked"
+    ) {
       // Invalidate briefing cache so it refetches with new account
       swrMutate(
         (key) => typeof key === "string" && key.startsWith("/api/ai/briefing"),
