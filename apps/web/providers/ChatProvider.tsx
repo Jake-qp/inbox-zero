@@ -37,6 +37,12 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { emailAccountId } = useAccount();
+  
+  // Daily Briefing - Custom addition: Prevent chat hooks from executing without valid account
+  if (!emailAccountId) {
+    return <>{children}</>;
+  }
+  
   const { mutate } = useSWRConfig();
 
   const [input, setInput] = useState<string>("");

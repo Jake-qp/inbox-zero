@@ -155,19 +155,32 @@ export const GET = withError(async (request) => {
       provider: "google",
     });
 
+    // Daily Briefing - Custom addition: Get ALL email accounts to prevent CASCADE delete
+    const sourceEmailAccounts = await prisma.emailAccount.findMany({
+      where: { userId: existingAccount.userId },
+    });
+
     await prisma.$transaction([
       prisma.account.update({
         where: { id: existingAccount.id },
         data: { userId: targetUserId },
       }),
-      prisma.emailAccount.update({
-        where: { accountId: existingAccount.id },
-        data: {
-          userId: targetUserId,
-          name: existingAccount.user.name,
-          email: existingAccount.user.email,
-        },
-      }),
+      // Move ALL email accounts to prevent CASCADE delete when user is deleted
+      ...sourceEmailAccounts.map((ea) =>
+        prisma.emailAccount.update({
+          where: { id: ea.id },
+          data: {
+            userId: targetUserId,
+            // Update name/email only for the account being merged
+            ...(ea.accountId === existingAccount.id
+              ? {
+                  name: existingAccount.user.name,
+                  email: existingAccount.user.email,
+                }
+              : {}),
+          },
+        }),
+      ),
       prisma.user.delete({
         where: { id: existingAccount.userId },
       }),
